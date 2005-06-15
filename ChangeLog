@@ -1,3 +1,15 @@
+2005-06-15  Stephen Deasey  <sdeasey@users.sf.net>
+
+	* nsdbpg.c: Untabify, reindent and reorganize. Drop emulation code
+	for AOLserver 2.x ns_table etc. commands.
+	* tclcmds.c: Split extra Tcl commands and bind vaiable emulation
+	code into new file.
+	* nsdbpg.h:
+	* dbpg.h: Rename header to reflect it's private status. Move all
+	private declarations into c files, leaving just the handle
+	structure shared module wide.
+	* Makefile: Remove all the crud.
+
 2005-06-14  Stephen Deasey  <sdeasey@users.sf.net>
 
 	* Makefile: Update for initial import into NaviServer CVS.

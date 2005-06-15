@@ -33,7 +33,8 @@ NAVISERVER = /usr/local/ns
 
 MODNAME    = nsdbpg
 MOD        = nsdbpg.so
-MODOBJS    = nsdbpg.o
+MODOBJS    = nsdbpg.o tclcmds.o
+HDRS       = dbpg.h
 MODLIBS    = -lnsdb -lpq
 
 include  $(NAVISERVER)/include/Makefile.module
