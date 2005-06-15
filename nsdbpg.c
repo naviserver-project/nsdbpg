@@ -39,53 +39,47 @@
 NS_RCSID("$Header$");
 
 
-#define OID_QUOTED_STRING " oid = '"
-#define STRING_BUF_LEN    256
-
-
 NS_EXPORT int Ns_ModuleVersion = 1;
-char *PgDbName = "PostgreSQL";
+char *pgDbName = "PostgreSQL";
 
 
 /*
  * Local functions defined in this file.
  */
 
-static char   *Ns_PgName(Ns_DbHandle *handle);
-static int     Ns_PgOpenDb(Ns_DbHandle *dbhandle);
-static int     Ns_PgCloseDb(Ns_DbHandle *dbhandle);
-static Ns_Set *Ns_PgBindRow(Ns_DbHandle *handle);
-static int     Ns_PgExec(Ns_DbHandle *handle, char *sql);
-static int     Ns_PgGetRow(Ns_DbHandle *handle, Ns_Set *row);
-static int     Ns_PgFlush(Ns_DbHandle *handle);
-static int     Ns_PgResetHandle(Ns_DbHandle *handle);
+static char   *DbType(Ns_DbHandle *handle);
+static int     OpenDb(Ns_DbHandle *handle);
+static int     CloseDb(Ns_DbHandle *handle);
+static Ns_Set *BindRow(Ns_DbHandle *handle);
+static int     Exec(Ns_DbHandle *handle, char *sql);
+static int     GetRow(Ns_DbHandle *handle, Ns_Set *row);
+static int     Flush(Ns_DbHandle *handle);
+static int     ResetHandle(Ns_DbHandle *handle);
 
-static void Ns_PgUnQuoteOidString(Ns_DString *sql);
-static void Ns_PgSetErrorstate(Ns_DbHandle *handle);
-static void set_transaction_state(Ns_DbHandle *handle, char *sql, char *funcname);
+static void SetTransactionState(Ns_DbHandle *handle, char *sql);
 
 
 /*
  * Local variables defined in this file.
  */
 
-static Ns_DbProc PgProcs[] = {
-    {DbFn_Name,         Ns_PgName},
-    {DbFn_DbType,       Ns_PgName},
-    {DbFn_OpenDb,       Ns_PgOpenDb},
-    {DbFn_CloseDb,      Ns_PgCloseDb},
-    {DbFn_BindRow,      Ns_PgBindRow},
-    {DbFn_Exec,         Ns_PgExec},
-    {DbFn_GetRow,       Ns_PgGetRow},
-    {DbFn_Flush,        Ns_PgFlush},
-    {DbFn_Cancel,       Ns_PgFlush},
-    {DbFn_ResetHandle,  Ns_PgResetHandle},
-    {DbFn_ServerInit,   Ns_PgServerInit},
+static Ns_DbProc procs[] = {
+    {DbFn_DbType,       DbType},
+    {DbFn_Name,         DbType},
+    {DbFn_OpenDb,       OpenDb},
+    {DbFn_CloseDb,      CloseDb},
+    {DbFn_BindRow,      BindRow},
+    {DbFn_Exec,         Exec},
+    {DbFn_GetRow,       GetRow},
+    {DbFn_Flush,        Flush},
+    {DbFn_Cancel,       Flush},
+    {DbFn_ResetHandle,  ResetHandle},
+    {DbFn_ServerInit,   PgDbServerInit},
     {0, NULL}
 };
 
-static char          datestyle[STRING_BUF_LEN];
-static unsigned int  pgCNum = 0;
+static char *dateStyle = NULL;
+static unsigned int id = 0;     /* Global count of connections. */
 
 
 /*
@@ -93,7 +87,7 @@ static unsigned int  pgCNum = 0;
  *
  * Ns_DbDriverInit --
  *
- *      Module entry point: register driver functions.
+ *      Register driver functions.
  *
  * Results:
  *      NS_OK or NS_ERROR.
@@ -105,46 +99,30 @@ static unsigned int  pgCNum = 0;
  */
 
 NS_EXPORT int
-Ns_DbDriverInit(char *hDriver, char *configPath)
+Ns_DbDriverInit(char *driver, char *configPath)
 {
-    char *t;
-    char *e;
+    char       *style;
+    Ns_DString  ds;
 
-    /* 
-     * Register the PostgreSQL driver functions with nsdb.
-     * Nsdb will later call the Ns_PgServerInit() function
-     * for each virtual server which utilizes nsdb. 
-     */
-
-    if (Ns_DbRegisterDriver(hDriver, &(PgProcs[0])) != NS_OK) {
-        Ns_Log(Error, "Ns_DbDriverInit(%s):  Could not register the %s driver.",
-               hDriver, PgDbName);
+    if (Ns_DbRegisterDriver(driver, &procs[0]) != NS_OK) {
         return NS_ERROR;
     }
-    Ns_Log(Notice, "%s loaded.", PgDbName);
 
-    e = getenv("PGDATESTYLE");
+    style = Ns_ConfigGetValue(configPath, "datestyle");
+    if (style != NULL) {
+        if (STRIEQ(style, "ISO") || STRIEQ(style, "SQL")
+            || STRIEQ(style, "POSTGRES") || STRIEQ(style, "GERMAN")
+            || STRIEQ(style, "NONEURO") || STRIEQ(style, "EURO")) {
 
-    t = Ns_ConfigGetValue(configPath, "DateStyle");
-
-    strcpy(datestyle, "");
-    if (t) {
-        if (!strcasecmp(t, "ISO") || !strcasecmp(t, "SQL") ||
-            !strcasecmp(t, "POSTGRES") || !strcasecmp(t, "GERMAN") ||
-            !strcasecmp(t, "NONEURO") || !strcasecmp(t, "EURO")) {
-            strcpy(datestyle, "set datestyle to '");
-            strcat(datestyle, t);
-            strcat(datestyle, "'");
-            if (e) {
-                Ns_Log(Notice, "PGDATESTYLE overridden by datestyle param.");
-            }
+            Ns_DStringInit(&ds);
+            Ns_DStringPrintf(&ds, "set datestyle to '%s'", style);
+            dateStyle = Ns_DStringExport(&ds);
+            Ns_Log(Notice, "nsdbpg: Using datestyle: %s", style);
         } else {
-            Ns_Log(Error, "Illegal value for datestyle - ignored");
+            Ns_Log(Error, "nsdbpg: Illegal value for datestyle: %s", style);
         }
-    } else {
-        if (e) {
-            Ns_Log(Notice, "PGDATESTYLE setting used for datestyle.");
-        }
+    } else if ((style = getenv("PGDATESTYLE")) != NULL) {
+        Ns_Log(Notice, "nsdbpg: PGDATESTYLE in effect: %s", style);
     }
 
     return NS_OK;
@@ -154,12 +132,12 @@ Ns_DbDriverInit(char *hDriver, char *configPath)
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgName --
+ * DbType --
  *
- *      Return the string name which identifies the PostgreSQL driver.
+ *      Return a string which identifies the driver type and name.
  *
  * Results:
- *      Database name.
+ *      Database type/name.
  *
  * Side effects:
  *      None.
@@ -168,15 +146,16 @@ Ns_DbDriverInit(char *hDriver, char *configPath)
  */
 
 static char *
-Ns_PgName(Ns_DbHandle *ignored) {
-    return PgDbName;
+DbType(Ns_DbHandle *handle)
+{
+    return pgDbName;
 }
 
 
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgOpenDb --
+ * OpenDb --
  *
  *      Open a connection to a postgres database.  The datasource for
  *      postgres is in the form "host:port:database".
@@ -191,78 +170,69 @@ Ns_PgName(Ns_DbHandle *ignored) {
  */
 
 static int
-Ns_PgOpenDb(Ns_DbHandle *handle) {
+OpenDb(Ns_DbHandle *handle)
+{
+    Connection  *pconn;
+    PGconn      *pgconn;
+    Ns_DString   ds;
+    char        *host, *port, *db;
 
-    static char    *funcname = "Ns_PgOpenDb";
-    NsPgConn       *nsConn;
-    PGconn         *pgConn;
-    char           *host;
-    char           *port;
-    char           *db;
-    char            datasource[STRING_BUF_LEN];
-
-    if (handle == NULL
-        || handle->datasource == NULL
-        || strlen(handle->datasource) > STRING_BUF_LEN) {
-
-        Ns_Log(Error, "%s: Invalid handle.", funcname);
+    if (handle == NULL || handle->datasource == NULL) {
+        Ns_Log(Error, "nsdbpg: Invalid handle.");
         return NS_ERROR;
     }
 
-    strcpy(datasource, handle->datasource);
-    host = datasource;
-    port = strchr(datasource, ':');
+    Ns_DStringInit(&ds);
+    Ns_DStringAppend(&ds, handle->datasource);
+    host = ds.string;
+    port = strchr(host, ':');
     if (port == NULL || ((db = strchr(port + 1, ':')) == NULL)) {
-        Ns_Log(Error, "Ns_PgOpenDb(%s):  Malformed datasource:  %s.  Proper form is: (host:port:database).",
+        Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
+               "Should be host:port:database.",
                handle->driver, handle->datasource);
         return NS_ERROR;
-    } else {
-        *port++ = '\0';
-        *db++ = '\0';
-        if (!strcmp(host, "localhost")) {
-            Ns_Log(Notice, "Opening %s on %s", db, host);
-            pgConn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
-                                  handle->password);
-        } else {
-            Ns_Log(Notice, "Opening %s on %s, port %s", db, host, port);
-            pgConn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
-                                  handle->password);
-        }
-
-        if (PQstatus(pgConn) == CONNECTION_OK) {
-            Ns_Log(Notice, "Ns_PgOpenDb(%s):  Openned connection to %s.",
-                   handle->driver, handle->datasource);
-            nsConn = ns_malloc(sizeof(NsPgConn));
-            if (!nsConn) {
-                Ns_Log(Error, "ns_malloc() failed allocating nsConn");
-                return NS_ERROR;
-            }
-            nsConn->in_transaction = NS_FALSE;
-            nsConn->cNum = pgCNum++;
-            nsConn->conn = pgConn;
-            nsConn->res = NULL;
-            nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
-            handle->connection = nsConn;
-
-            if (strlen(datestyle)) { 
-                return Ns_PgExec(handle, datestyle) == NS_DML ?
-                    NS_OK : NS_ERROR;
-            }
-            return NS_OK;
-        } else {
-            Ns_Log(Error, "Ns_PgOpenDb(%s):  Could not connect to %s:  %s", handle->driver,
-                   handle->datasource, PQerrorMessage(pgConn));
-            PQfinish(pgConn);
-            return NS_ERROR;
-        }
     }
+
+    *port++ = '\0';
+    *db++ = '\0';
+    if (STREQ(host, "localhost")) {
+        Ns_Log(Notice, "nsdbpg: Opening %s on %s", db, host);
+        pgconn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
+                             handle->password);
+    } else {
+        Ns_Log(Notice, "nsdbpg: Opening %s on %s, port %s", db, host, port);
+        pgconn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
+                             handle->password);
+    }
+    if (PQstatus(pgconn) != CONNECTION_OK) {
+        Ns_Log(Error, "nsdbpg(%s):  Could not connect to %s: %s",
+               handle->driver, handle->datasource, PQerrorMessage(pgconn));
+        PQfinish(pgconn);
+        return NS_ERROR;
+    }
+    Ns_Log(Notice, "nsdbpg(%s):  Openned connection to %s.",
+           handle->driver, handle->datasource);
+
+    pconn = ns_malloc(sizeof(Connection));
+    pconn->pgconn = pgconn;
+    pconn->res = NULL;
+    pconn->id = id++;
+    pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
+    pconn->in_transaction = NS_FALSE;
+    handle->connection = pconn;
+
+    if (dateStyle != NULL && Ns_DbExec(handle, dateStyle) != NS_DML) {
+        return NS_ERROR;
+    }
+
+    return NS_OK;
 }
 
 
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgCloseDb --
+ * CloseDb --
  *
  *      Close an open connection to postgres.
  *
@@ -276,32 +246,23 @@ Ns_PgOpenDb(Ns_DbHandle *handle) {
  */
 
 static int
-Ns_PgCloseDb(Ns_DbHandle *handle) {
+CloseDb(Ns_DbHandle *handle) {
 
-    static char *funcname = "Ns_PgCloseDb";
-    NsPgConn    *nsConn;
+    Connection *pconn;
 
     if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", funcname);
+        Ns_Log(Error, "nsdbpg: Invalid connection.");
         return NS_ERROR;
     }
 
-    nsConn = handle->connection;
+    pconn = handle->connection;
 
     if (handle->verbose) {
-        Ns_Log(Notice, "Ns_PgCloseDb(%d):  Closing connection:  %s",
-               nsConn->cNum, handle->datasource);
+        Ns_Log(Notice, "nsdbpg(%s):  Closing connection: %u",
+               handle->driver, pconn->id);
     }
-
-    PQfinish(nsConn->conn);
-
-    /* DRB: Not sure why the driver zeroes these out before
-     * freeing nsConn, but can't hurt I guess.
-    */
-    nsConn->conn = NULL;
-    nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
-    ns_free(nsConn);
-
+    PQfinish(pconn->pgconn);
+    ns_free(pconn);
     handle->connection = NULL;
 
     return NS_OK;
@@ -311,7 +272,7 @@ Ns_PgCloseDb(Ns_DbHandle *handle) {
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgBindRow --
+ * BindRow --
  *
  *      Retrieve the column names of the current result.
  *
@@ -325,48 +286,45 @@ Ns_PgCloseDb(Ns_DbHandle *handle) {
  */
 
 static Ns_Set *
-Ns_PgBindRow(Ns_DbHandle *handle)
+BindRow(Ns_DbHandle *handle)
 {
-    static char  *funcname = "Ns_PgBindRow";
-    int           i;
-    NsPgConn      *nsConn;
-    Ns_Set        *row = NULL;
+    Connection  *pconn;
+    Ns_Set      *row = NULL;
+    int          i;
 
     if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", funcname);
-        goto done;
+        Ns_Log(Error, "nsdbpg: Invalid connection.");
+        return NULL;
     }
 
     if (!handle->fetchingRows) {
-        Ns_Log(Error, "%s(%s):  No rows waiting to bind.", funcname, handle->datasource);
-        goto done;
+        Ns_Log(Error, "nsdbpg(%s): No rows waiting to bind.", handle->datasource);
+        return NULL;
     }
 
-    nsConn = handle->connection;    
+    pconn = handle->connection;    
     row = handle->row;
 
-    if (PQresultStatus(nsConn->res) == PGRES_TUPLES_OK) {
-        nsConn->curTuple = 0;
-        nsConn->nCols = PQnfields(nsConn->res);
-        nsConn->nTuples = PQntuples(nsConn->res);
+    if (PQresultStatus(pconn->res) == PGRES_TUPLES_OK) {
+        pconn->curTuple = 0;
+        pconn->nCols = PQnfields(pconn->res);
+        pconn->nTuples = PQntuples(pconn->res);
         row = handle->row;
-        
-        for (i = 0; i < nsConn->nCols; i++) {
-            Ns_SetPut(row, (char *) PQfname(nsConn->res, i), NULL);
+
+        for (i = 0; i < pconn->nCols; i++) {
+            Ns_SetPut(row, PQfname(pconn->res, i), NULL);
         }
-       
     }
     handle->fetchingRows = NS_FALSE;
-    
-  done:
-    return (row);
+
+    return row;
 }
 
 
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgExec --
+ * Exec --
  *
  *      Send SQL to the database.
  *
@@ -380,58 +338,57 @@ Ns_PgBindRow(Ns_DbHandle *handle)
  */
 
 static int
-Ns_PgExec(Ns_DbHandle *handle, char *sql)
+Exec(Ns_DbHandle *handle, char *sql)
 {
-    static char *funcname = "Ns_PgExec";
-    NsPgConn    *nsConn;
+    Connection  *pconn;
     Ns_DString   dsSql;
     int          retry_count = 2;
+    int          result = NS_ERROR;
 
     if (sql == NULL) {
-        Ns_Log(Error, "%s: Invalid SQL query.", funcname);
+        Ns_Log(Error, "nsdbpg: No SQL query.");
         return NS_ERROR;
     }
-
     if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", funcname);
+        Ns_Log(Error, "nsdbpg: No connection.");
         return NS_ERROR;
     }
 
-    nsConn = handle->connection;
-
-    PQclear(nsConn->res);
+    pconn = handle->connection;
+    PQclear(pconn->res);
 
     Ns_DStringInit(&dsSql);
     Ns_DStringAppend(&dsSql, sql);
-    Ns_PgUnQuoteOidString(&dsSql);
 
     while (dsSql.length > 0 && isspace(dsSql.string[dsSql.length - 1])) {
         dsSql.string[--dsSql.length] = '\0';
     }
-
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
         Ns_DStringAppend(&dsSql, ";");
     }
-
     if (handle->verbose) {
-        Ns_Log(Notice, "Querying '%s'", dsSql.string);
+        Ns_Log(Notice, "nsdbpg: Querying '%s'", dsSql.string);
     }
 
-    nsConn->res = PQexec(nsConn->conn, dsSql.string);
+    pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
     /* Set error result for exception message -- not sure that this
        belongs here in DRB-improved driver..... but, here it is
        anyway, as it can't really hurt anything :-) */
    
-    Ns_PgSetErrorstate(handle);
+    if (PQresultStatus(pconn->res) == PGRES_BAD_RESPONSE) {
+        Ns_DStringAppend(&handle->dsExceptionMsg, "PGRES_BAD_RESPONSE ");
+    }
+    Ns_DStringAppend(&handle->dsExceptionMsg,
+                     PQresultErrorMessage(pconn->res));
 
     /* This loop should actually be safe enough, but we'll take no 
      * chances and guard against infinite retries with a counter.
      */
 
-    while (PQstatus(nsConn->conn) == CONNECTION_BAD && retry_count--) {
+    while (PQstatus(pconn->pgconn) == CONNECTION_BAD && retry_count--) {
 
-        int in_transaction = nsConn->in_transaction;
+        int in_transaction = pconn->in_transaction;
 
         /* Backend returns a fatal error if it really crashed.  After a crash,
          * all other backends close with a non-fatal error because shared
@@ -439,13 +396,13 @@ Ns_PgExec(Ns_DbHandle *handle, char *sql)
          * will retry the query.
          */
 
-        int retry_query = PQresultStatus(nsConn->res) == PGRES_NONFATAL_ERROR;
+        int retry_query = PQresultStatus(pconn->res) == PGRES_NONFATAL_ERROR;
 
         /* Reconnect messages need to be logged regardless of Verbose. */    
 
-        Ns_Log(Notice, "%s: Trying to reopen database connection", funcname);
+        Ns_Log(Notice, "nsdbpg: Trying to reopen database connection");
 
-        PQfinish(nsConn->conn);
+        PQfinish(pconn->pgconn);
 
         /* We'll kick out with an NS_ERROR if we're in a transaction.
          * The queries within the transaction up to this point were
@@ -464,20 +421,19 @@ Ns_PgExec(Ns_DbHandle *handle, char *sql)
          * you'll find no sympathy on my part.
          */
 
-        if (Ns_PgOpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
+        if (OpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
             if (in_transaction) {
-                Ns_Log(Notice, "%s: In transaction, conn died, error returned",
-                       funcname);
+                Ns_Log(Notice, "nsdbpg: In transaction, conn died, error returned");
             }
             Ns_DStringFree(&dsSql);
             return NS_ERROR;
         }
 
-        nsConn = handle->connection;
+        pconn = handle->connection;
 
-        Ns_Log(Notice, "%s: Retrying query", funcname);
-        PQclear(nsConn->res);
-        nsConn->res = PQexec(nsConn->conn, dsSql.string);
+        Ns_Log(Notice, "nsdbpg: Retrying query");
+        PQclear(pconn->res);
+        pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
         /* This may again break the connection for two reasons: 
          * our query may be a back-end crashing query or another
@@ -489,48 +445,49 @@ Ns_PgExec(Ns_DbHandle *handle, char *sql)
 
     Ns_DStringFree(&dsSql);
 
-    if (nsConn->res == NULL) {
-        Ns_Log(Error, "Ns_PgExec(%s):  Could not send query '%s':  %s",
-               handle->datasource, sql, PQerrorMessage(nsConn->conn));
+    if (pconn->res == NULL) {
+        Ns_Log(Error, "nsdbpg(%s):  Could not send query '%s':  %s",
+               handle->datasource, sql, PQerrorMessage(pconn->pgconn));
         return NS_ERROR;
     }
 
-    /* DRB: let's clean up nsConn a bit, if someone didn't read all
+    /* DRB: let's clean up pgConn a bit, if someone didn't read all
      * the rows returned by a query, did a dml query, then a getrow
      * the driver might get confused if we don't zap nCols and
      * curTuple.
      */
-    nsConn->nCols=0;
-    nsConn->curTuple=0;
-    nsConn->nTuples=0;
 
-    switch(PQresultStatus(nsConn->res)) {
+    pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
+
+    switch(PQresultStatus(pconn->res)) {
     case PGRES_TUPLES_OK:
         handle->fetchingRows = NS_TRUE;
-        return NS_ROWS;
+        result = NS_ROWS;
         break;
     case PGRES_COPY_IN:
     case PGRES_COPY_OUT:
-        return NS_DML;
+        result = NS_DML;
         break;
     case PGRES_COMMAND_OK:
-        set_transaction_state(handle, sql, funcname);
-        sscanf(PQcmdTuples(nsConn->res), "%d", &(nsConn->nTuples));
-        return NS_DML;
+        SetTransactionState(handle, sql);
+        sscanf(PQcmdTuples(pconn->res), "%d", &pconn->nTuples);
+        result = NS_DML;
         break;
     default:
-        Ns_Log(Error, "%s: result status: %d message: %s", funcname,
-               PQresultStatus(nsConn->res), PQerrorMessage(nsConn->conn));
-        Ns_DbSetException(handle,"ERROR",PQerrorMessage(nsConn->conn));
-        return NS_ERROR;
+        Ns_Log(Error, "nsdbpg: result status: %d message: %s",
+               PQresultStatus(pconn->res), PQerrorMessage(pconn->pgconn));
+        Ns_DbSetException(handle,"ERROR", PQerrorMessage(pconn->pgconn));
+        result = NS_ERROR;
     }
+
+    return result;
 }
 
 
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgGetRow --
+ * GetRow --
  *
  *      Fill in the given Ns_Set with values for each column of the
  *      current row.
@@ -545,41 +502,38 @@ Ns_PgExec(Ns_DbHandle *handle, char *sql)
  */
 
 static int
-Ns_PgGetRow(Ns_DbHandle *handle, Ns_Set *row) {
-
-    static char *funcname = "Ns_PgGetRow";
-    NsPgConn    *nsConn;
+GetRow(Ns_DbHandle *handle, Ns_Set *row)
+{
+    Connection  *pconn;
     int          i;
 
     if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", funcname);
+        Ns_Log(Error, "nsdbpg: No connection.");
         return NS_ERROR;
     } 
 
     if (row == NULL) {
-        Ns_Log(Error, "%s: Invalid Ns_Set -> row.", funcname);
+        Ns_Log(Error, "nsdbpg: Invalid Ns_Set -> row.");
         return NS_ERROR;
     }
 
-    nsConn = handle->connection;
+    pconn = handle->connection;
 
-    if (nsConn->nCols == 0) {
-        Ns_Log(Error, "Ns_PgGetRow(%s):  Get row called outside a fetch row loop.",
+    if (pconn->nCols == 0) {
+        Ns_Log(Error, "nsdbpg(%s):  GetRow called outside a fetch row loop.",
                handle->datasource);
         return NS_ERROR;
-    } else if (nsConn->curTuple == nsConn->nTuples) {
-
-        PQclear(nsConn->res);
-        nsConn->res = NULL;
-        nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
-        return NS_END_DATA;
-
-    } else {
-        for (i = 0; i < nsConn->nCols; i++) {
-            Ns_SetPutValue(row, i, PQgetvalue(nsConn->res, nsConn->curTuple, i));
-        }
-        nsConn->curTuple++;
     }
+    if (pconn->curTuple == pconn->nTuples) {
+        PQclear(pconn->res);
+        pconn->res = NULL;
+        pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
+        return NS_END_DATA;
+    }
+    for (i = 0; i < pconn->nCols; i++) {
+        Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, i));
+    }
+    pconn->curTuple++;
 
     return NS_OK;
 }
@@ -588,7 +542,7 @@ Ns_PgGetRow(Ns_DbHandle *handle, Ns_Set *row) {
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgFlush --
+ * Flush --
  *
  *      Flush unfetched rows.
  *
@@ -602,22 +556,21 @@ Ns_PgGetRow(Ns_DbHandle *handle, Ns_Set *row) {
  */
 
 static int
-Ns_PgFlush(Ns_DbHandle *handle) {
-
-    static char *funcname = "Ns_PgFlush";
-    NsPgConn    *nsConn;
+Flush(Ns_DbHandle *handle)
+{
+    Connection *pconn;
 
     if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", funcname);
+        Ns_Log(Error, "nsdbpg: Invalid connection.");
         return NS_ERROR;
     }
 
-    nsConn = handle->connection;
+    pconn = handle->connection;
 
-    if (nsConn->nCols > 0) {
-        PQclear(nsConn->res);
-        nsConn->res = NULL;
-        nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
+    if (pconn->nCols > 0) {
+        PQclear(pconn->res);
+        pconn->res = NULL;
+        pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
     }
 
     return NS_OK;
@@ -627,7 +580,7 @@ Ns_PgFlush(Ns_DbHandle *handle) {
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgResetHandle --
+ * ResetHandle --
  *
  *      Reset connection ready for next command.
  *
@@ -641,24 +594,23 @@ Ns_PgFlush(Ns_DbHandle *handle) {
  */
 
 static int
-Ns_PgResetHandle(Ns_DbHandle *handle)
+ResetHandle(Ns_DbHandle *handle)
 {
-    static char *funcname = "Ns_PgResetHandle";
-    NsPgConn    *nsConn;
+    Connection *pconn;
 
     if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", funcname);
+        Ns_Log(Error, "nsdbpg: Invalid connection.");
         return NS_ERROR;
     }
 
-    nsConn = handle->connection;
+    pconn = handle->connection;
 
-    if (nsConn->in_transaction) {
+    if (pconn->in_transaction) {
         if (handle->verbose) {
-            Ns_Log(Notice, "%s: Rolling back transaction", funcname);
+            Ns_Log(Warning, "nsdbpg: Rolling back transaction.");
         }
-        if (Ns_PgExec(handle, "rollback") != PGRES_COMMAND_OK) {
-            Ns_Log(Error, "%s: Rollback failed", funcname);
+        if (Ns_DbExec(handle, "rollback") != PGRES_COMMAND_OK) {
+            Ns_Log(Error, "nsdbpg: Rollback failed.");
         }
         return NS_ERROR;
     }
@@ -666,64 +618,11 @@ Ns_PgResetHandle(Ns_DbHandle *handle)
     return NS_OK;
 }
 
-
-
-
-
-
-
-
 
 /*
  *----------------------------------------------------------------------
  *
- * Ns_PgSetErrorstate --
- *
- *      Propagate the current postgres error message to nsdb.
- *
- * Results:
- *      None.
- *
- * Side effects:
- *      None.
- *
- *----------------------------------------------------------------------
- */
-
-static void
-Ns_PgSetErrorstate(Ns_DbHandle *handle)
-{
-    NsPgConn    *nsConn = handle->connection;
-    Ns_DString  *nsMsg  = &(handle->dsExceptionMsg);
-
-    Ns_DStringTrunc(nsMsg, 0);
-
-    switch (PQresultStatus(nsConn->res)) {
-        case PGRES_EMPTY_QUERY:
-        case PGRES_COMMAND_OK:
-        case PGRES_TUPLES_OK:
-        case PGRES_COPY_OUT:
-        case PGRES_COPY_IN:
-        case PGRES_NONFATAL_ERROR:
-              Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
-              break;
-
-        case PGRES_FATAL_ERROR:
-              Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
-              break;
-
-        case PGRES_BAD_RESPONSE:
-              Ns_DStringAppend(nsMsg, "PGRES_BAD_RESPONSE ");
-              Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
-              break;
-    }
-}
-
-
-/*
- *----------------------------------------------------------------------
- *
- * set_transaction_state --
+ * SetTransactionState --
  *
  *      Set the current transaction state based on the query pointed
  *      to by "sql".  Should be called only after the query has
@@ -739,59 +638,29 @@ Ns_PgSetErrorstate(Ns_DbHandle *handle)
  */
 
 static void
-set_transaction_state(Ns_DbHandle *handle, char *sql, char *funcname)
+SetTransactionState(Ns_DbHandle *handle, char *sql)
 {
-    NsPgConn *nsConn = handle->connection;
+    Connection *pconn = handle->connection;
 
-    while (*sql == ' ') sql++;
-
+    while (*sql == ' ') {
+        sql++;
+    }
     if (!strncasecmp(sql, "begin", 5)) {
+        pconn->in_transaction = NS_TRUE;
         if (handle->verbose) {
-            Ns_Log(Notice, "%s: Entering transaction", funcname);
+            Ns_Log(Notice, "nsdbpg: Entering transaction.");
         }
-        nsConn->in_transaction = NS_TRUE;
-    } else if (!strncasecmp(sql, "end", 3) ||
-               !strncasecmp(sql, "commit", 6)) {
+    } else if (!strncasecmp(sql, "end", 3)
+               || !strncasecmp(sql, "commit", 6)) {
+        pconn->in_transaction = NS_FALSE;
         if (handle->verbose) {
-            Ns_Log(Notice, "%s: Committing transaction", funcname);
+            Ns_Log(Notice, "nsdbpg: Committing transaction.");
         }
-        nsConn->in_transaction = NS_FALSE;
-    } else if (!strncasecmp(sql, "abort", 5) ||
-               !strncasecmp(sql, "rollback", 8)) {
+    } else if (!strncasecmp(sql, "abort", 5)
+               || !strncasecmp(sql, "rollback", 8)) {
+        pconn->in_transaction = NS_FALSE;
         if (handle->verbose) {
-            Ns_Log(Notice, "%s: Rolling back transaction", funcname);
-        }
-        nsConn->in_transaction = NS_FALSE;
-    }
-}
-
-static void
-Ns_PgUnQuoteOidString(Ns_DString *sql) {
-
-    static char *funcname = "Ns_PgUnQuoteOidString";
-    char *ptr;
-
-    if (sql == NULL) {
-        Ns_Log(Error, "%s: Invalid Ns_DString -> sql.", funcname);
-        return;
-    }
-
-/* Additions by Scott Cannon Jr. (SDL/USU):
- *
- * This corrects the problem of quoting oid numbers when requesting a
- * specific row.
- *
- * The quoting of oid's is currently ambiguous.
- */
-
-    if ((ptr = strstr(sql->string, OID_QUOTED_STRING)) != NULL) {
-        ptr += (strlen(OID_QUOTED_STRING) - 1);
-        *ptr++ = ' ';
-        while(*ptr != '\0' && *ptr != '\'') {
-            ptr++;
-        }
-        if (*ptr == '\'') {
-            *ptr = ' ';
+            Ns_Log(Notice, "nsdbpg: Rolling back transaction.");
         }
     }
 }

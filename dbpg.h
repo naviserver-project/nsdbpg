@@ -48,18 +48,18 @@
  * specific to postgres.
  */ 
 
-typedef struct NsPgConn {
-    PGconn         *conn;
-    unsigned int    cNum;
+typedef struct Connection {
+    PGconn         *pgconn;
     PGresult       *res;
+    unsigned int    id;
     int             nCols;
     int             nTuples;
     int             curTuple;
     int             in_transaction;
-} NsPgConn;
+} Connection;
 
-extern char *PgDbName;
-extern int Ns_PgServerInit(char *hServer, char *hModule, char *hDriver);
+extern char *pgDbName;
+extern int PgDbServerInit(char *server, char *module, char *driver);
 
 
 #endif /* DBPG_H */

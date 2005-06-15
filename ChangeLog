@@ -1,5 +1,10 @@
 2005-06-15  Stephen Deasey  <sdeasey@users.sf.net>
 
+	* dbpg.h:
+	* nsdbpg.c:
+	* tclcmds.c: Use a regular naming scheme for functions and
+	variables.
+
 	* nsdbpg.c: Untabify, reindent and reorganize. Drop emulation code
 	for AOLserver 2.x ns_table etc. commands.
 	* tclcmds.c: Split extra Tcl commands and bind vaiable emulation
