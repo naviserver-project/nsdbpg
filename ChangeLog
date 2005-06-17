@@ -1,3 +1,8 @@
+2005-06-16  Vlad Seryakov  <seryakov@users.sf.net>
+
+	* nsdbpg.c: removed undefined PgDbServerInit function
+	which prevented module to be loaded
+
 2005-06-15  Stephen Deasey  <sdeasey@users.sf.net>
 
 	* dbpg.h:
