@@ -74,6 +74,7 @@ static Ns_DbProc procs[] = {
     {DbFn_Flush,        Flush},
     {DbFn_Cancel,       Flush},
     {DbFn_ResetHandle,  ResetHandle},
+    {DbFn_ServerInit,   Ns_PgServerInit},
     {0, NULL}
 };
 
