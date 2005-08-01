@@ -102,7 +102,8 @@ static void decode3(unsigned char *p, char *buf, int n);
 int
 Ns_PgServerInit(char *server, char *module, char *hDriver)
 {
-    return Ns_TclInitInterps(server, AddCmds, NULL);
+    Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
+    return NS_OK;
 }
 
 static int
