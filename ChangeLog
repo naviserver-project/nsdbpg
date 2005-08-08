@@ -1,3 +1,7 @@
+2005-08-09  Vlad Seryakov  <seryakov@users.sf.net>
+
+	* tclcmds.c: changed to stop using old Ns_ functions
+
 2005-08-01  Vlad Seryakov  <seryakov@users.sf.net>
 
 	* tclcmds.c: removed usage of old compat functions

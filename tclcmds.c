@@ -310,9 +310,9 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
             Tcl_AppendResult (interp, "invalid set id `", argv[4], "'", NULL);
             return TCL_ERROR;       
         }
-        sql = Ns_StrDup(argv[5]);
+        sql = ns_strdup(argv[5]);
     } else {
-        sql = Ns_StrDup(argv[3]);
+        sql = ns_strdup(argv[3]);
     }
 
     /*
@@ -352,7 +352,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                     Ns_DStringFree(&ds);
                     string_list_free_list(bind_variables);
                     string_list_free_list(sql_fragments);
-                    Ns_Free(sql);
+                    ns_free(sql);
                     return TCL_ERROR;
                 }
 
@@ -403,7 +403,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
             }
         }
 
-        Ns_Free(sql);
+        ns_free(sql);
         sql = Ns_DStringExport(&ds);
         Ns_DStringFree(&ds);
     }
@@ -458,7 +458,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
     } else {
         return DbFail(interp, handle, cmd, sql);    
     }
-    Ns_Free(sql);
+    ns_free(sql);
 
     return TCL_OK;
 }
@@ -506,7 +506,7 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql)
     }
     Tcl_AppendResult(interp, "\nSQL: ", sql, NULL);
 
-    Ns_Free(sql);
+    ns_free(sql);
 
     return TCL_ERROR;
 }
@@ -572,9 +572,9 @@ parse_bind_variables(char *input,
     int current_string_length = 0;
     int first_bind = 0;
 
-    fragbuf = (char*)Ns_Malloc((strlen(input)+1)*sizeof(char));
+    fragbuf = (char*)ns_malloc((strlen(input)+1)*sizeof(char));
     fp = fragbuf;
-    bindbuf = (char*)Ns_Malloc((strlen(input)+1)*sizeof(char));
+    bindbuf = (char*)ns_malloc((strlen(input)+1)*sizeof(char));
     bp = bindbuf;
 
     for (p = input, state=base, lastchar='\0'; *p != '\0'; lastchar = *p, p++) {
@@ -589,7 +589,7 @@ parse_bind_variables(char *input,
                 bp = bindbuf;
                 state = bind;
                 *fp = '\0';
-                felt = string_list_elt_new(Ns_StrDup(fragbuf));
+                felt = string_list_elt_new(ns_strdup(fragbuf));
                 if(ftail == 0) {
                     fhead = ftail = felt;
                 } else {
@@ -616,7 +616,7 @@ parse_bind_variables(char *input,
                 fp = fragbuf;
             } else if (!(*p == '_' || *p == '$' || *p == '#' || isalnum((int)*p))) {
                 *bp = '\0';
-                elt = string_list_elt_new(Ns_StrDup(bindbuf));
+                elt = string_list_elt_new(ns_strdup(bindbuf));
                 if (tail == 0) {
                     head = tail = elt;
                 } else {
@@ -635,7 +635,7 @@ parse_bind_variables(char *input,
 
     if (state == bind) {
         *bp = '\0';
-        elt = string_list_elt_new(Ns_StrDup(bindbuf));
+        elt = string_list_elt_new(ns_strdup(bindbuf));
         if (tail == 0) {
             head = tail = elt;
         } else {
@@ -644,7 +644,7 @@ parse_bind_variables(char *input,
         }
     } else {
         *fp = '\0';
-        felt = string_list_elt_new(Ns_StrDup(fragbuf));
+        felt = string_list_elt_new(ns_strdup(fragbuf));
         if (ftail == 0) {
             fhead = ftail = felt;
         } else {
@@ -653,8 +653,8 @@ parse_bind_variables(char *input,
         }
     }
 
-    Ns_Free(fragbuf);
-    Ns_Free(bindbuf);
+    ns_free(fragbuf);
+    ns_free(bindbuf);
     *bind_variables = head;
     *fragments      = fhead;  
 
