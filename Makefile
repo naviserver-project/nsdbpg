@@ -29,7 +29,9 @@
 # $Header$
 #
 
-NAVISERVER = /usr/local/ns
+ifndef NAVISERVER
+    NAVISERVER  = /usr/local/ns
+endif
 
 MODNAME    = nsdbpg
 MOD        = nsdbpg.so
