@@ -33,10 +33,15 @@ ifndef NAVISERVER
     NAVISERVER  = /usr/local/ns
 endif
 
+ifdef POSTGRES
+    CFLAGS     = -I$(POSTGRES)/include
+    MODLIBS    = -L$(POSTGRES)/lib -Wl,-rpath,$(POSTGRES)/lib
+endif
+
 MODNAME    = nsdbpg
 MOD        = nsdbpg.so
 MODOBJS    = nsdbpg.o tclcmds.o
 HDRS       = dbpg.h
-MODLIBS    = -lnsdb -lpq
+MODLIBS    += -lnsdb -lpq
 
 include  $(NAVISERVER)/include/Makefile.module
