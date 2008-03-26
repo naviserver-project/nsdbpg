@@ -65,11 +65,11 @@ static string_list_elt_t *string_list_elt_new(char *string);
 static int string_list_len (string_list_elt_t *head);
 static void string_list_free_list (string_list_elt_t *head);
 
-static void parse_bind_variables(char *input, 
-                                 string_list_elt_t **bind_variables, 
+static void parse_bind_variables(char *input,
+                                 string_list_elt_t **bind_variables,
                                  string_list_elt_t **fragments);
 static int blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id);
-static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id, 
+static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
                                int to_conn_p, char* filename);
 static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value);
 static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
@@ -138,7 +138,7 @@ PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
     Ns_DbHandle    *handle;
     Connection     *pconn;
 
-    if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
+    if (Ns_TclDbGetHandle(interp, (char*)argv[2], &handle) != TCL_OK) {
         return TCL_ERROR;
     }
 
@@ -161,7 +161,7 @@ PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                              argv[0], " command dbId blobId\"", NULL);
             return TCL_ERROR;
         }
-        return blob_send_to_stream(interp, handle, argv[3], NS_TRUE, NULL);
+        return blob_send_to_stream(interp, handle, (char*)argv[3], NS_TRUE, NULL);
 
     } else if (!strcmp(argv[1], "blob_get")) {
         if (argc != 4) {
@@ -169,7 +169,7 @@ PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                              argv[0], " command dbId blobId\"", NULL);
             return TCL_ERROR;
         }
-        return blob_get(interp, handle, argv[3]);
+        return blob_get(interp, handle, (char*)argv[3]);
 
     } else if (!strcmp(argv[1], "blob_put")) {
         if (argc != 5) {
@@ -182,7 +182,7 @@ PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                              "blob_put only allowed in transaction", NULL);
             return TCL_ERROR;
         }
-        return blob_put(interp, handle, argv[3], argv[4]);
+        return blob_put(interp, handle, (char*)argv[3], (char*)argv[4]);
 
     } else if (!strcmp(argv[1], "blob_dml_file")) {
         if (argc != 5) {
@@ -195,15 +195,15 @@ PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                              "blob_dml_file only allowed in transaction", NULL);
             return TCL_ERROR;
         }
-        return blob_dml_file(interp, handle, argv[3], argv[4]);
+        return blob_dml_file(interp, handle, (char*)argv[3], (char*)argv[4]);
 
     } else if (!strcmp(argv[1], "blob_select_file")) {
         if (argc != 5) {
             Tcl_AppendResult(interp, "wrong # args: should be \"",
-                             argv[0], " command dbId blobId filename\"", NULL);          
+                             argv[0], " command dbId blobId filename\"", NULL);
             return TCL_ERROR;
         }
-        return blob_send_to_stream(interp, handle, argv[3], NS_FALSE, argv[4]);
+        return blob_send_to_stream(interp, handle, (char*)argv[3], NS_FALSE, (char*)argv[4]);
     }
 
     if (argc != 3) {
@@ -272,19 +272,18 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
     Ns_DString         ds;
     Ns_DbHandle       *handle;
     Ns_Set            *rowPtr;
-    Ns_Set            *set   = NULL; 
+    Ns_Set            *set   = NULL;
     char              *cmd;
     char              *sql;
     char              *value = NULL;
     char              *p;
-    int               value_frag_len = 0;
 
     if (argc < 4 || (!STREQ("-bind", argv[3]) && (argc != 4))
         || (STREQ("-bind", argv[3]) && (argc != 6))) {
         return BadArgs(interp, argv, "dbId sql");
     }
 
-    if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
+    if (Ns_TclDbGetHandle(interp, (char*)argv[2], &handle) != TCL_OK) {
         return TCL_ERROR;
     }
 
@@ -302,13 +301,13 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
         return TCL_ERROR;
     }
 
-    cmd = argv[1];
+    cmd = (char*)argv[1];
 
     if (STREQ("-bind", argv[3])) {
-        set = Ns_TclGetSet(interp, argv[4]);
+        set = Ns_TclGetSet(interp, (char*)argv[4]);
         if (set == NULL) {
             Tcl_AppendResult (interp, "invalid set id `", argv[4], "'", NULL);
-            return TCL_ERROR;       
+            return TCL_ERROR;
         }
         sql = ns_strdup(argv[5]);
     } else {
@@ -317,11 +316,11 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
 
     /*
      * Parse the query string and find the bind variables.  Return
-     * the sql fragments so that the query can be rebuilt with the 
+     * the sql fragments so that the query can be rebuilt with the
      * bind variable values interpolated into the original query.
      */
 
-    parse_bind_variables(sql, &bind_variables, &sql_fragments);  
+    parse_bind_variables(sql, &bind_variables, &sql_fragments);
 
     if (string_list_len(bind_variables) > 0) {
 
@@ -332,7 +331,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
          * for the bind variables.
          */
 
-        for (var_p = bind_variables, frag_p = sql_fragments; 
+        for (var_p = bind_variables, frag_p = sql_fragments;
              var_p != NULL || frag_p != NULL;) {
 
             if (frag_p != NULL) {
@@ -342,7 +341,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
 
             if (var_p != NULL) {
                 if (set == NULL) {
-                    value = Tcl_GetVar(interp, var_p->string, 0);
+                    value = (char*)Tcl_GetVar(interp, var_p->string, 0);
                 } else {
                     value = Ns_SetGet(set, var_p->string);
                 }
@@ -371,12 +370,12 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                      * This conversion is done before optimization of the query, so indices are
                      * still used when appropriate.
                      */
-                    Ns_DStringAppend(&ds, "'");       
+                    Ns_DStringAppend(&ds, "'");
 
                     /*
                      * DRB: Unfortunately, we need to double-quote quotes as well ... and
                      * escape backslashes
-                     */ 
+                     */
                     for (p = value; *p; p++) {
                         if (*p == '\'') {
                             if (p > value) {
@@ -397,7 +396,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                         Ns_DStringAppend(&ds, value);
                     }
 
-                    Ns_DStringAppend(&ds, "'");       
+                    Ns_DStringAppend(&ds, "'");
                 }
                 var_p = var_p->next;
             }
@@ -456,7 +455,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
         }
 
     } else {
-        return DbFail(interp, handle, cmd, sql);    
+        return DbFail(interp, handle, cmd, sql);
     }
     ns_free(sql);
 
@@ -559,8 +558,8 @@ BadArgs(Tcl_Interp *interp, CONST char *argv[], char *args)
  */
 
 static void
-parse_bind_variables(char *input, 
-                     string_list_elt_t **bind_variables, 
+parse_bind_variables(char *input,
+                     string_list_elt_t **bind_variables,
                      string_list_elt_t **fragments)
 {
     char *p, lastchar;
@@ -570,7 +569,6 @@ parse_bind_variables(char *input,
     string_list_elt_t *elt, *head=0, *tail=0;
     string_list_elt_t *felt, *fhead=0, *ftail=0;
     int current_string_length = 0;
-    int first_bind = 0;
 
     fragbuf = (char*)ns_malloc((strlen(input)+1)*sizeof(char));
     fp = fragbuf;
@@ -656,7 +654,7 @@ parse_bind_variables(char *input,
     ns_free(fragbuf);
     ns_free(bindbuf);
     *bind_variables = head;
-    *fragments      = fhead;  
+    *fragments      = fhead;
 
     return;
 }
@@ -704,7 +702,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
         nbytes += byte_len;
         n = byte_len;
         for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
-            decode3(&data_column[i], &buf[j], n);
+            decode3((unsigned char*)&data_column[i], &buf[j], n);
         }
         buf[byte_len] = '\0';
         Tcl_AppendResult(interp, buf, NULL);
@@ -719,7 +717,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
 
 /* ns_pg blob_select_file db blob_id filename
  * Write a pseudo-blob to the passed in temp file name.  Some of this
- * shamelessly lifted from ora8.c. 
+ * shamelessly lifted from ora8.c.
  * DanW - This is just blob_write, except it doesn't send anything out the
  *        connection.
  * .
@@ -732,14 +730,14 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
  */
 
 static int
-blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id, 
+blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
             int to_conn_p, char* filename)
 {
     Connection  *pconn = handle->connection;
-    Ns_Conn     *conn;
+    Ns_Conn     *conn = NULL;
     int          segment;
     char         query[100];
-    int          fd;
+    int          fd = -1;
     char        *segment_pos;
 
     if (to_conn_p) {
@@ -799,7 +797,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
         sscanf(byte_len_column, "%d", &byte_len);
         n = byte_len;
         for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
-            decode3(&data_column[i], &buf[j], n);
+            decode3((unsigned char*)&data_column[i], &buf[j], n);
         }
 
         stream_actually_write(fd, conn, buf, byte_len, to_conn_p);
@@ -817,7 +815,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
     return TCL_OK;
 }
 
-/** 
+/**
  * Write the contents of BUFP to a file descriptor or to
  * the network connection directly.
  *
@@ -829,7 +827,7 @@ stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_con
     int bytes_written = 0;
 
     if (to_conn_p) {
-        if (Ns_WriteConn(conn, bufp, length) == NS_OK) {
+        if (Ns_ConnWrite(conn, bufp, length) == NS_OK) {
             bytes_written = length;
         } else {
             bytes_written = 0;
@@ -865,7 +863,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value)
         segment_len = value_len > 6000 ? 6000 : value_len;
         value_len -= segment_len;
         for (i = 0, j = 0; i < segment_len; i += 3, j+=4) {
-            encode3(&value_ptr[i], &out_buf[j]);
+            encode3((unsigned char*)&value_ptr[i], &out_buf[j]);
         }
         out_buf[j] = '\0';
         sprintf(segment_pos, "%d, %d, '%s')", segment, segment_len, out_buf);
@@ -912,7 +910,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
     readlen = read (fd, in_buf, 6000);
     while (readlen > 0) {
         for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
-            encode3(&in_buf[i], &out_buf[j]);
+            encode3((unsigned char*)&in_buf[i], &out_buf[j]);
         }
         out_buf[j] = '\0';
         sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
@@ -984,7 +982,7 @@ string_list_len (string_list_elt_t *head)
     for (n = 0; head != NULL; head = head->next) {
         n++;
     }
-    return n; 
+    return n;
 }
 
 
