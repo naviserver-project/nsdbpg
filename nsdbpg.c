@@ -53,6 +53,7 @@ static int     CloseDb(Ns_DbHandle *handle);
 static Ns_Set *BindRow(Ns_DbHandle *handle);
 static int     Exec(Ns_DbHandle *handle, char *sql);
 static int     GetRow(Ns_DbHandle *handle, Ns_Set *row);
+static int     GetRowCount(Ns_DbHandle *handle);
 static int     Flush(Ns_DbHandle *handle);
 static int     ResetHandle(Ns_DbHandle *handle);
 
@@ -71,6 +72,7 @@ static Ns_DbProc procs[] = {
     {DbFn_BindRow,      BindRow},
     {DbFn_Exec,         Exec},
     {DbFn_GetRow,       GetRow},
+    {DbFn_GetRowCount,  GetRowCount},
     {DbFn_Flush,        Flush},
     {DbFn_Cancel,       Flush},
     {DbFn_ResetHandle,  ResetHandle},
@@ -536,6 +538,36 @@ GetRow(Ns_DbHandle *handle, Ns_Set *row)
     pconn->curTuple++;
 
     return NS_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * GetRowCount --
+ *
+ *      Returns number of rows processed by the last SQL stetement
+ *
+ * Results:
+ *      Numbe rof rows or NS_ERROR.
+ *
+ * Side effects:
+ *      None
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+GetRowCount(Ns_DbHandle *handle)
+{
+    Connection  *pconn;
+
+    if (handle == NULL || handle->connection == NULL) {
+        Ns_Log(Error, "nsdbpg: No connection.");
+        return NS_ERROR;
+    }
+    pconn = handle->connection;
+
+    return pconn->nTuples;
 }
 
 
