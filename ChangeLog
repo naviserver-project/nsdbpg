@@ -1,3 +1,9 @@
+2005-06-14  Stephen Deasey  <sdeasey@users.sf.net>
+
+	* Makefile: Update for initial import into NaviServer CVS.
+	* nsdbpg.h:
+	* nsdbpg.c: Renamed from nspostgres.x.
+
 2003-03-29  Scott Goodwin  <scott@scottg.net>
 
 	* Makefile: Fixed problem where if AS3 was not set, -lnsdb was not

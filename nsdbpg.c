@@ -29,7 +29,7 @@
  * $Header$
  */
 
-#include "nspostgres.h"
+#include "nsdbpg.h"
 
 DllExport int   Ns_ModuleVersion = 1;
 
