@@ -362,6 +362,18 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                      */
                     Ns_DStringAppend(&ds, "NULL");
                 } else {
+		    int needEscapeStringSyntax = 0;
+
+		    /*
+		     * Determine, if we need the SQL escape string syntax E'...'
+		     */
+		    for (p = value; *p; p++) {
+		        if (*p == '\\') {
+			    needEscapeStringSyntax = 1;
+			    break;
+			}
+		    }
+
                     /*
                      * DRB: We really only need to quote strings, but there is one benefit
                      * to quoting numeric values as well.  A value like '35 union select...'
@@ -370,7 +382,7 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, CONST char *argv[])
                      * This conversion is done before optimization of the query, so indices are
                      * still used when appropriate.
                      */
-                    Ns_DStringAppend(&ds, "'");
+                    Ns_DStringAppend(&ds, needEscapeStringSyntax ? "E'" : "'");
 
                     /*
                      * DRB: Unfortunately, we need to double-quote quotes as well ... and
@@ -827,8 +839,10 @@ stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_con
     int bytes_written = 0;
 
     if (to_conn_p) {
-        if (Ns_ConnWrite(conn, bufp, length) == NS_OK) {
-            bytes_written = length;
+        int n = Ns_ConnContentSent(conn);
+
+        if (Ns_ConnWriteData(conn, bufp, length, 0) == NS_OK) {
+            bytes_written = Ns_ConnContentSent(conn) - n;
         } else {
             bytes_written = 0;
         }
