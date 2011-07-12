@@ -1,3 +1,8 @@
+2011-07-97  Gustaf Neumann  <neumann@wu-wien.ac.at>
+	* tclcmds.c: Get rid of deprecated calls.
+	* tclcmds.c: using SQL escape string syntax E'...' when needed (required in
+	PostgreSql 9.1, when used in connection with OpenACS)
+
 2008-08-28  Vlad Seryakov  <seryakov@users.sf.net>
 
         * Added new RowCount API function
