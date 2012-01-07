@@ -292,7 +292,6 @@ BindRow(Ns_DbHandle *handle)
 {
     Connection  *pconn;
     Ns_Set      *row = NULL;
-    int          i;
 
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid connection.");
@@ -308,6 +307,8 @@ BindRow(Ns_DbHandle *handle)
     row = handle->row;
 
     if (PQresultStatus(pconn->res) == PGRES_TUPLES_OK) {
+        int i;
+
         pconn->curTuple = 0;
         pconn->nCols = PQnfields(pconn->res);
         pconn->nTuples = PQntuples(pconn->res);

@@ -682,7 +682,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
     int         segment;
     char        query[100];
     char        *segment_pos;
-    int         nbytes = 0;
+    /*int         nbytes = 0;*/
 
     segment = 1;
 
@@ -711,7 +711,9 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
         byte_len_column = PQgetvalue(pconn->res, 0, 0);
         data_column = PQgetvalue(pconn->res, 0, 1);
         sscanf(byte_len_column, "%d", &byte_len);
+	/* nbytes is not used 
         nbytes += byte_len;
+	*/
         n = byte_len;
         for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
             decode3((unsigned char*)&data_column[i], &buf[j], n);
@@ -930,6 +932,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
         sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
         if (Ns_DbExec(handle, query) != NS_DML) {
             Tcl_AppendResult(interp, "Error inserting data into BLOB", NULL);
+            close(fd);
             return TCL_ERROR;
         }
         readlen = read(fd, in_buf, 6000);
