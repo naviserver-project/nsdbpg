@@ -33,6 +33,20 @@ ifndef NAVISERVER
     NAVISERVER  = /usr/local/ns
 endif
 
+#
+# Ability to specify include and library separately:
+#
+ifdef PGINCLUDE
+    CFLAGS     = -I$(PGINCLUDE)
+endif
+ifdef PGLIB
+    MODLIBS    = -L$(PGLIB) -Wl,-rpath,$(PGLIB)
+endif
+
+#
+# Alternate configuration based on a common root for includes and
+# libraries (legacy and backward compatibility):
+#
 ifdef POSTGRES
     CFLAGS     = -I$(POSTGRES)/include
     MODLIBS    = -L$(POSTGRES)/lib -Wl,-rpath,$(POSTGRES)/lib
