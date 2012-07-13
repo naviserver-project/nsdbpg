@@ -36,8 +36,6 @@
 
 #include "dbpg.h"
 
-NS_RCSID("$Header$");
-
 
 NS_EXPORT int Ns_ModuleVersion = 1;
 char *pgDbName = "PostgreSQL";

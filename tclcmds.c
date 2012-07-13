@@ -36,8 +36,6 @@
 
 #include "dbpg.h"
 
-NS_RCSID("$Header$");
-
 
 /*
  * The following structure defines a linked list of strings
