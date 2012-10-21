@@ -36,10 +36,6 @@
 
 #include "dbpg.h"
 
-<<<<<<< local
-=======
-
->>>>>>> other
 /*
  * The following structure defines a linked list of strings
  * for parsing SQL statements.
