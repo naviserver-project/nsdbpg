@@ -2,7 +2,7 @@
 What is this?
 ------------
 
-This module implements a simple AOLserver database services driver.  A
+This module implements a simple AOLserver/NaviServer database services driver.  A
 database driver is a module which interfaces between the AOLserver
 database-independent nsdb module and the API of a particular DBMS.  A
 database driver's job is to open connections, send SQL statements, and
@@ -45,6 +45,7 @@ Contributors to this file include:
 	Scott Cannon, Jr.	(SDL/USU)
         Dan Wickstrom           <danw@rtp.ericsson.se>
 	Scott S. Goodwin	<scott@scottg.net>
+        Gustaf Neumann          <neumann@wu-wien.ac.at>
 
 Original example driver by Jim Davidson
 
@@ -53,5 +54,9 @@ DEVELOPER'S GUIDE:
 
 Run 'make help' for developer information.
 
-See the Makefile for further information on building this module.
+Example for a build operation:
 
+    export PG=/usr/local/pg923
+    make PGLIB=$PG/lib PGINCLUDE=$PG/include
+
+See the Makefile for further information on building this module.
