@@ -55,7 +55,7 @@ static Tcl_ObjCmdProc PgObjCmd;
 static Tcl_ObjCmdProc PgBindObjCmd;
 
 static int AddCmds(Tcl_Interp *interp, void *arg);
-static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql);
+static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql, Ns_DString *dsPtr);
 static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], char *args);
 
 static string_list_elt_t *string_list_elt_new(char *string);
@@ -269,6 +269,122 @@ PgObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
     return TCL_ERROR;
 }
 
+
+/*
+ *----------------------------------------------------------------------
+ *
+ *  ParsedSql Tcl_Obj type --
+ *
+ *      ParsedSql is an Tcl_Obj type carrying a bind-var-parsed 
+ *      SQL statement.
+ *
+ *----------------------------------------------------------------------
+ */
+
+typedef struct {
+    string_list_elt_t *sql_fragments;
+    string_list_elt_t *bind_variables;
+    int nrFragments;
+} ParsedSQL;
+
+static Tcl_FreeInternalRepProc	ParsedSQLFreeInternalRep;
+static Tcl_SetFromAnyProc       ParsedSQLSetFromAny;
+static Tcl_DupInternalRepProc   ParsedSQLDupInternalRep;
+
+Tcl_ObjType ParsedSQLObjType = {
+    "parsedSQL",			/* name */
+    ParsedSQLFreeInternalRep,		/* freeIntRepProc */
+    ParsedSQLDupInternalRep,		/* dupIntRepProc */
+    NULL,				/* updateStringProc */
+    ParsedSQLSetFromAny			/* setFromAnyProc */
+};
+
+/* 
+ * freeIntRepProc
+ */
+static void
+ParsedSQLFreeInternalRep(
+    register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with internal
+				 * representation to free. */
+{
+  ParsedSQL *parsedSQLptr = (ParsedSQL *)objPtr->internalRep.twoPtrValue.ptr1;
+
+  assert(parsedSQLptr);
+  //fprintf(stderr, "%p ParsedSQLFreeInternalRep freeing ParsedSQL %p refCOunt %d\n", objPtr, parsedSQLptr, objPtr->refCount);
+
+  if (parsedSQLptr->sql_fragments)  {string_list_free_list(parsedSQLptr->sql_fragments);}
+  if (parsedSQLptr->bind_variables) {string_list_free_list(parsedSQLptr->bind_variables);}
+  
+  /*
+   * ... and free structure
+   */
+  ns_free(parsedSQLptr);
+}
+
+/* 
+ * dupIntRepProc
+ */
+static void
+ParsedSQLDupInternalRep(
+    Tcl_Obj *srcObjPtr,
+    Tcl_Obj *dstObjPtr)
+{
+    ParsedSQL *srcPtr = (ParsedSQL *)srcObjPtr->internalRep.twoPtrValue.ptr1, *dstPtr;
+
+    //fprintf(stderr, "ParsedSQLDupInternalRep src %p dst %p\n", srcObjPtr, dstObjPtr);
+  
+    dstPtr = ns_malloc(sizeof(ParsedSQL));
+    if (srcPtr->sql_fragments) {
+	//fprintf(stderr, "HAVE TO DUP FRAGMENTS OR TO REGENERATE IT\n");
+	dstPtr->sql_fragments = NULL;
+    }
+    if (srcPtr->bind_variables) {
+	dstPtr->bind_variables = NULL;
+    }
+    dstPtr->nrFragments = srcPtr->nrFragments;
+    
+    dstObjPtr->typePtr = srcObjPtr->typePtr;
+    dstObjPtr->internalRep.twoPtrValue.ptr1 = dstPtr;
+}
+
+#define TclFreeIntRep(objPtr) \
+    if ((objPtr)->typePtr != NULL && \
+            (objPtr)->typePtr->freeIntRepProc != NULL) { \
+        (objPtr)->typePtr->freeIntRepProc(objPtr); \
+    }
+
+/* 
+ * setFromAnyProc
+ */
+static int
+ParsedSQLSetFromAny(
+    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
+    register Tcl_Obj *objPtr)	/* The object to convert. */
+{
+    char      *sql    = Tcl_GetString(objPtr);
+    ParsedSQL *srcPtr = ns_malloc(sizeof(ParsedSQL));
+
+    /*
+     * Parse the query string and find the bind variables.  Return
+     * the sql fragments so that the query can be rebuilt with the
+     * bind variable values interpolated into the original query.
+     */
+    parse_bind_variables(sql, &srcPtr->bind_variables, &srcPtr->sql_fragments);
+    srcPtr->nrFragments = string_list_len(srcPtr->bind_variables);
+    //fprintf(stderr, "ParsedSQLSetFromAny\n");
+
+    /*
+     * Free the old interal representation and store own structure as internal
+     * representation.
+     */
+    TclFreeIntRep(objPtr);
+    objPtr->internalRep.twoPtrValue.ptr1 = (void *)srcPtr;
+    objPtr->internalRep.twoPtrValue.ptr2 = NULL;
+    objPtr->typePtr = &ParsedSQLObjType;
+    
+    return TCL_OK;
+}
+
 
 /*
  *----------------------------------------------------------------------
@@ -293,17 +409,16 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
     string_list_elt_t *var_p;
     string_list_elt_t *sql_fragments;
     string_list_elt_t *frag_p;
-    Ns_DString         ds;
+    Ns_DString         ds, *dsPtr = NULL;
+    Tcl_Obj           *sqlObj;
+    ParsedSQL         *parsedSQLptr;
     Ns_DbHandle       *handle;
     Ns_Set            *rowPtr;
     Ns_Set            *set   = NULL;
-    char              *cmd;
-    char              *sql;
-    char              *value = NULL;
-    char              *p;
+    char              *cmd, *sql, *value = NULL, *p;
     char              *arg3 = argc > 3 ? Tcl_GetString(argv[3]) : NULL;
     int               haveBind = arg3 ? STREQ("-bind", Tcl_GetString(argv[3])) : 0;
-    int               result, subcmd;
+    int               result, subcmd, nrFragments;
 
     static CONST char *subcmds[] = {
       "dml", "1row", "0or1row", "select", "exec", 
@@ -352,22 +467,41 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
             Tcl_AppendResult (interp, "invalid set id `", setId, "'", NULL);
             return TCL_ERROR;
         }
-        sql = ns_strdup(Tcl_GetString(argv[5]));
+        sqlObj = argv[5];
     } else {
-        sql = ns_strdup(Tcl_GetString(argv[3]));
+        sqlObj = argv[3];
     }
 
-    /*
-     * Parse the query string and find the bind variables.  Return
-     * the sql fragments so that the query can be rebuilt with the
-     * bind variable values interpolated into the original query.
-     */
+    if (sqlObj->typePtr != &ParsedSQLObjType) {
+	Ns_Log(Debug, "%p convert type %s to sql <%s>", 
+	       sqlObj, sqlObj->typePtr ? sqlObj->typePtr->name : "none", Tcl_GetString(sqlObj));
+	if (Tcl_ConvertToType(interp, sqlObj, &ParsedSQLObjType) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+    } else {
+	Ns_Log(Debug, "%p REUSE sql", sqlObj);
+    }
+    assert(sqlObj->typePtr == &ParsedSQLObjType);
 
-    parse_bind_variables(sql, &bind_variables, &sql_fragments);
+    sql = Tcl_GetString(sqlObj);
 
-    if (string_list_len(bind_variables) > 0) {
+    parsedSQLptr = (ParsedSQL *)sqlObj->internalRep.twoPtrValue.ptr1;
+    if (parsedSQLptr->nrFragments > 0 && parsedSQLptr->sql_fragments == NULL) {
+	/* 
+	 * The obj was a result of a dup operation, we have to
+	 * reparse sql_fragments 
+	 */
+	//fprintf(stderr, "REPARSE\n");
+	parse_bind_variables(sql, &parsedSQLptr->bind_variables, &parsedSQLptr->sql_fragments);
+	parsedSQLptr->nrFragments = string_list_len(parsedSQLptr->bind_variables);
+    }
+    bind_variables = parsedSQLptr->bind_variables;
+    sql_fragments = parsedSQLptr->sql_fragments;
+    nrFragments = parsedSQLptr->nrFragments;
 
-        Ns_DStringInit(&ds);
+    if (nrFragments > 0) {
+	dsPtr = &ds;
+        Ns_DStringInit(dsPtr);
 
         /*
          * Rebuild the query and substitute the actual tcl variable values
@@ -378,7 +512,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
              var_p != NULL || frag_p != NULL;) {
 
             if (frag_p != NULL) {
-                Ns_DStringAppend(&ds, frag_p->string);
+                Ns_DStringAppend(dsPtr, frag_p->string);
                 frag_p = frag_p->next;
             }
 
@@ -391,10 +525,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
                 if (value == NULL) {
                     Tcl_AppendResult (interp, "undefined variable `", var_p->string,
                                       "'", NULL);
-                    Ns_DStringFree(&ds);
-                    string_list_free_list(bind_variables);
-                    string_list_free_list(sql_fragments);
-                    ns_free(sql);
+                    if (dsPtr) { Ns_DStringFree(dsPtr); }
                     return TCL_ERROR;
                 }
 
@@ -403,7 +534,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
                      * DRB: If the Tcl variable contains the empty string, pass a NULL
                      * as the value.
                      */
-                    Ns_DStringAppend(&ds, "NULL");
+                    Ns_DStringAppend(dsPtr, "NULL");
                 } else {
 		    int needEscapeStringSyntax = 0;
 
@@ -411,7 +542,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
 		     * Determine, if we need the SQL escape string syntax E'...'
 		     */
 		    for (p = value; *p; p++) {
-		        if (*p == '\\') {
+		        if (unlikely(*p == '\\')) {
 			    needEscapeStringSyntax = 1;
 			    break;
 			}
@@ -425,57 +556,54 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
                      * This conversion is done before optimization of the query, so indices are
                      * still used when appropriate.
                      */
-                    Ns_DStringAppend(&ds, needEscapeStringSyntax ? "E'" : "'");
+                    Ns_DStringAppend(dsPtr, needEscapeStringSyntax ? "E'" : "'");
 
                     /*
-                     * DRB: Unfortunately, we need to double-quote quotes as well ... and
-                     * escape backslashes
+                     * We need to double-quote quotes and
+                     * escape backslashes inside the value.
                      */
                     for (p = value; *p; p++) {
-                        if (*p == '\'') {
-                            if (p > value) {
-                                Ns_DStringNAppend(&ds, value, p-value);
+                        if (unlikely(*p == '\'')) {
+                            if (likely(p > value)) {
+                                Ns_DStringNAppend(dsPtr, value, p-value);
                             }
                             value = p;
-                            Ns_DStringAppend(&ds, "'");
-                        } else if (*p == '\\') {
-                            if (p > value) {
-                                Ns_DStringNAppend(&ds, value, p-value);
+                            Ns_DStringNAppend(dsPtr, "'", 1);
+                        } else if (unlikely(*p == '\\')) {
+                            if (likely(p > value)) {
+                                Ns_DStringNAppend(dsPtr, value, p-value);
                             }
                             value = p;
-                            Ns_DStringAppend(&ds, "\\");
+                            Ns_DStringNAppend(dsPtr, "\\", 1);
                         }
                     }
 
-                    if (p > value) {
-                        Ns_DStringAppend(&ds, value);
+                    if (likely(p > value)) {
+			Ns_DStringNAppend(dsPtr, value, p-value);
                     }
 
-                    Ns_DStringAppend(&ds, "'");
+                    Ns_DStringNAppend(dsPtr, "'", 1);
                 }
                 var_p = var_p->next;
             }
         }
-
-        ns_free(sql);
-        sql = Ns_DStringExport(&ds);
-        Ns_DStringFree(&ds);
     }
 
-    string_list_free_list(bind_variables);
-    string_list_free_list(sql_fragments);
+    if (dsPtr) {
+	sql = Ns_DStringValue(dsPtr);
+    }
 
     switch (subcmd) {
     case DmlIdx:
         if (Ns_DbDML(handle, sql) != NS_OK) {
-            return DbFail(interp, handle, cmd, sql);
+            return DbFail(interp, handle, cmd, sql, dsPtr);
         }
 	break;
 
     case OneRowIdx:
         rowPtr = Ns_Db1Row(handle, sql);
         if (rowPtr == NULL) {
-            return DbFail(interp, handle, cmd, sql);
+            return DbFail(interp, handle, cmd, sql, dsPtr);
         }
         Ns_TclEnterSet(interp, rowPtr, 1);
 	break;
@@ -486,7 +614,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
 
 	    rowPtr = Ns_Db0or1Row(handle, sql, &nrows);
 	    if (rowPtr == NULL) {
-		return DbFail(interp, handle, cmd, sql);
+		return DbFail(interp, handle, cmd, sql, dsPtr);
 	    }
 	    if (nrows == 0) {
 		Ns_SetFree(rowPtr);
@@ -499,7 +627,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
     case SelectIdx:
         rowPtr = Ns_DbSelect(handle, sql);
         if (rowPtr == NULL) {
-            return DbFail(interp, handle, cmd, sql);
+            return DbFail(interp, handle, cmd, sql, dsPtr);
         }
         Ns_TclEnterSet(interp, rowPtr, 0);
 	break;
@@ -513,13 +641,13 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
             Tcl_SetResult(interp, "NS_ROWS", TCL_STATIC);
             break;
         default:
-            return DbFail(interp, handle, cmd, sql);
+            return DbFail(interp, handle, cmd, sql, dsPtr);
             break;
         }
 	break;
     }
 
-    ns_free(sql);
+    if (dsPtr) { Ns_DStringFree(dsPtr); }
 
     return TCL_OK;
 }
@@ -543,7 +671,7 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
  */
 
 static int
-DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql)
+DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql, Ns_DString *dsPtr)
 {
     Connection *pconn = handle->connection;
     char       *pqerror;
@@ -567,7 +695,7 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql)
     }
     Tcl_AppendResult(interp, "\nSQL: ", sql, NULL);
 
-    ns_free(sql);
+    if (dsPtr) { Ns_DStringFree(dsPtr); }
 
     return TCL_ERROR;
 }
@@ -758,7 +886,6 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
         }
 
 	byte_len = atoi(PQgetvalue(pconn->res, 0, 0));
-	fprintf(stderr, "PQgetvalue 0,0 '%s' -> %d\n", PQgetvalue(pconn->res, 0, 0), byte_len);
         data_column = PQgetvalue(pconn->res, 0, 1);
 	/* nbytes is not used 
         nbytes += byte_len;
@@ -855,7 +982,6 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
         }
 
         byte_len = atoi(PQgetvalue(pconn->res, 0, 0));
-	fprintf(stderr, "PQgetvalue 0,0 '%s' -> %d\n", PQgetvalue(pconn->res, 0, 0), byte_len);
         data_column = PQgetvalue(pconn->res, 0, 1);
         n = byte_len;
         for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
