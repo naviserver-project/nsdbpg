@@ -208,7 +208,7 @@ OpenDb(Ns_DbHandle *handle)
         PQfinish(pgconn);
         return NS_ERROR;
     }
-    Ns_Log(Notice, "nsdbpg(%s):  Openned connection to %s.",
+    Ns_Log(Notice, "nsdbpg(%s):  Opened connection to %s.",
            handle->driver, handle->datasource);
 
     pconn = ns_malloc(sizeof(Connection));
