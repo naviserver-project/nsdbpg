@@ -491,7 +491,6 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
 	 * The obj was a result of a dup operation, we have to
 	 * reparse sql_fragments 
 	 */
-	//fprintf(stderr, "REPARSE\n");
 	parse_bind_variables(sql, &parsedSQLptr->bind_variables, &parsedSQLptr->sql_fragments);
 	parsedSQLptr->nrFragments = string_list_len(parsedSQLptr->bind_variables);
     }
