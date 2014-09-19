@@ -32,16 +32,14 @@
  * dbpg.h --
  *
  *      Private types and declarations for the nsdbpg module.
- *
- *      $Header$
  */
 
 #ifndef DBPG_H
 #define DBPG_H
 
 
-#include "nsdb.h"
-#include "libpq-fe.h"
+#include <nsdb.h>
+#include <libpq-fe.h>
 
 /*
  * The following structure maintains per handle data
