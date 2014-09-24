@@ -42,8 +42,8 @@
  */
 
 typedef struct _string_list_elt {
-  struct _string_list_elt *next;
-  char                    *string;
+    struct _string_list_elt *next;
+    char                    *string;
 } string_list_elt_t;
 
 
@@ -137,14 +137,14 @@ PgObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
     int            subcmd, result;
 
     static CONST char *subcmds[] = {
-      "blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file", 
-      "db", "host", "options", "port", "number", "error", "status", "ntuples",
-      NULL
+	"blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file", 
+	"db", "host", "options", "port", "number", "error", "status", "ntuples",
+	NULL
     };
 
     enum SubCmdIndices {
-      BlobWriteIdx, BlobGetIdx, BlobPutIdx, BlobDmlFileIdx, BlobSelectFileIdx,
-      DbIdx, HostIdx, OptionsIdx, PortIdx, NumberIdx, ErrorIdx, StatusIdx, NtuplesIdx
+	BlobWriteIdx, BlobGetIdx, BlobPutIdx, BlobDmlFileIdx, BlobSelectFileIdx,
+	DbIdx, HostIdx, OptionsIdx, PortIdx, NumberIdx, ErrorIdx, StatusIdx, NtuplesIdx
     };
 
 
@@ -304,27 +304,27 @@ Tcl_ObjType ParsedSQLObjType = {
  */
 static void
 ParsedSQLFreeInternalRep(
-    register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with internal
-				 * representation to free. */
+			 register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with internal
+							 * representation to free. */
 {
-  ParsedSQL *parsedSQLptr = (ParsedSQL *)objPtr->internalRep.twoPtrValue.ptr1;
+    ParsedSQL *parsedSQLptr = (ParsedSQL *)objPtr->internalRep.twoPtrValue.ptr1;
 
-  assert(parsedSQLptr);
-  /*fprintf(stderr, "%p ParsedSQLFreeInternalRep freeing ParsedSQL %p refCOunt %d # %d frags %p vars %p\n", 
-	  objPtr, 
-	  parsedSQLptr, objPtr->refCount,
-	  parsedSQLptr->nrFragments,
-	  parsedSQLptr->sql_fragments,
-	  parsedSQLptr->bind_variables
-	  );*/
+    assert(parsedSQLptr);
+    /*fprintf(stderr, "%p ParsedSQLFreeInternalRep freeing ParsedSQL %p refCOunt %d # %d frags %p vars %p\n", 
+      objPtr, 
+      parsedSQLptr, objPtr->refCount,
+      parsedSQLptr->nrFragments,
+      parsedSQLptr->sql_fragments,
+      parsedSQLptr->bind_variables
+      );*/
 
-  if (parsedSQLptr->sql_fragments)  {string_list_free_list(parsedSQLptr->sql_fragments);}
-  if (parsedSQLptr->bind_variables) {string_list_free_list(parsedSQLptr->bind_variables);}
+    if (parsedSQLptr->sql_fragments)  {string_list_free_list(parsedSQLptr->sql_fragments);}
+    if (parsedSQLptr->bind_variables) {string_list_free_list(parsedSQLptr->bind_variables);}
   
-  /*
-   * ... and free structure
-   */
-  ns_free(parsedSQLptr);
+    /*
+     * ... and free structure
+     */
+    ns_free(parsedSQLptr);
 }
 
 /* 
@@ -332,8 +332,8 @@ ParsedSQLFreeInternalRep(
  */
 static void
 ParsedSQLDupInternalRep(
-    Tcl_Obj *srcObjPtr,
-    Tcl_Obj *dstObjPtr)
+			Tcl_Obj *srcObjPtr,
+			Tcl_Obj *dstObjPtr)
 {
     ParsedSQL *srcPtr = (ParsedSQL *)srcObjPtr->internalRep.twoPtrValue.ptr1, *dstPtr;
 
@@ -353,10 +353,10 @@ ParsedSQLDupInternalRep(
     dstObjPtr->internalRep.twoPtrValue.ptr1 = dstPtr;
 }
 
-#define TclFreeIntRep(objPtr) \
-    if ((objPtr)->typePtr != NULL && \
-            (objPtr)->typePtr->freeIntRepProc != NULL) { \
-        (objPtr)->typePtr->freeIntRepProc(objPtr); \
+#define TclFreeIntRep(objPtr)				\
+    if ((objPtr)->typePtr != NULL &&			\
+	(objPtr)->typePtr->freeIntRepProc != NULL) {	\
+        (objPtr)->typePtr->freeIntRepProc(objPtr);	\
     }
 
 /* 
@@ -364,8 +364,8 @@ ParsedSQLDupInternalRep(
  */
 static int
 ParsedSQLSetFromAny(
-    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
-    register Tcl_Obj *objPtr)	/* The object to convert. */
+		    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
+		    register Tcl_Obj *objPtr)	/* The object to convert. */
 {
     char      *sql    = Tcl_GetString(objPtr);
     ParsedSQL *srcPtr = ns_calloc(1, sizeof(ParsedSQL));
@@ -423,16 +423,16 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
     Ns_Set            *set   = NULL;
     char              *cmd, *sql, *value = NULL, *p;
     char              *arg3 = argc > 3 ? Tcl_GetString(argv[3]) : NULL;
-    int               haveBind = arg3 ? STREQ("-bind", Tcl_GetString(argv[3])) : 0;
+    int               haveBind = arg3 ? STREQ("-bind", arg3) : 0;
     int               result, subcmd, nrFragments;
 
     static CONST char *subcmds[] = {
-      "dml", "1row", "0or1row", "select", "exec", 
-      NULL
+	"dml", "1row", "0or1row", "select", "exec", 
+	NULL
     };
 
     enum SubCmdIndices {
-      DmlIdx, OneRowIdx, ZeroOrOneRowIdx, SelectIdx, ExecIdx
+	DmlIdx, OneRowIdx, ZeroOrOneRowIdx, SelectIdx, ExecIdx
     };
 
     if (argc < 4 
@@ -647,7 +647,6 @@ PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv
             break;
         default:
             return DbFail(interp, handle, cmd, sql, dsPtr);
-            break;
         }
 	break;
     }
@@ -893,7 +892,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
 	byte_len = atoi(PQgetvalue(pconn->res, 0, 0));
         data_column = PQgetvalue(pconn->res, 0, 1);
 	/* nbytes is not used 
-        nbytes += byte_len;
+	   nbytes += byte_len;
 	*/
         n = byte_len;
         for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
@@ -926,7 +925,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
 
 static int
 blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
-            int to_conn_p, char* filename)
+		    int to_conn_p, char* filename)
 {
     Connection  *pconn = handle->connection;
     Ns_Conn     *conn = NULL;
@@ -1233,8 +1232,11 @@ static unsigned char
 enc_one(unsigned char c)
 {
     c = ENC(c);
-    if (c == '\'') c = 'a';
-    else if (c == '\\') c = 'b';
+    if (c == '\'') {
+	c = 'a';
+    } else if (c == '\\') {
+	c = 'b';
+    }
     return c;
 }
 
@@ -1254,8 +1256,11 @@ encode3(unsigned char *p, char *buf)
 static unsigned char
 get_one(unsigned char c)
 {
-    if (c == 'a') return '\'';
-    else if (c == 'b') return '\\';
+    if (c == 'a') {
+	return '\'';
+    } else if (c == 'b') {
+	return '\\';
+    }
     return c;
 }
 
@@ -1269,10 +1274,13 @@ decode3(unsigned char *p, char *buf, int n)
     c3 = get_one(p[2]);
     c4 = get_one(p[3]);
 
-    if (n >= 1)
+    if (n >= 1) {
         *buf++ = DEC(c1) << 2 | DEC(c2) >> 4;
-    if (n >= 2)
+    }
+    if (n >= 2) {
         *buf++ = DEC(c2) << 4 | DEC(c3) >> 2;
-    if (n >= 3)
+    }
+    if (n >= 3) {
         *buf++ = DEC(c3) << 6 | DEC(c4);
+    }
 }
