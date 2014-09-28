@@ -829,7 +829,8 @@ parse_bind_variables(char *input,
         *bp = '\0';
         elt = string_list_elt_new(ns_strdup(bindbuf));
         if (tail == NULL) {
-            head = tail = elt;
+            head = elt;
+            /*tail = elt;*/
         } else {
             tail->next = elt;
             /*tail = elt;*/
@@ -838,7 +839,8 @@ parse_bind_variables(char *input,
         *fp = '\0';
         felt = string_list_elt_new(ns_strdup(fragbuf));
         if (ftail == NULL) {
-            fhead = ftail = felt;
+            fhead = felt;
+	    /*  ftail = felt; */
         } else {
             ftail->next = felt;
             /*ftail = felt;*/
