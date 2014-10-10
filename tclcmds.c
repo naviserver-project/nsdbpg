@@ -74,7 +74,8 @@ static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
 static int stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p);
 
 static unsigned char enc_one(unsigned char c);
-static void encode3(unsigned char *p, char *buf);
+static void encode3(unsigned char *p, unsigned char *buf)
+    NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
 static unsigned char get_one(unsigned char c);
 static void decode3(unsigned char *p, char *buf, int n);
 
@@ -245,7 +246,7 @@ PgObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
 
     case NumberIdx:
 	if (argc != 3) break;
-        Tcl_SetObjResult(interp, Tcl_NewIntObj(pconn->id));
+        Tcl_SetObjResult(interp, Tcl_NewIntObj((int)pconn->id));
 	return TCL_OK;
     
     case ErrorIdx:
@@ -1042,12 +1043,13 @@ stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_con
 static int
 blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value)
 {
-    int         i, j, segment, value_len;
-    char        out_buf[8001], query[10000];
-    char        *segment_pos, *value_ptr;
+    int            i, j, segment, value_len;
+    unsigned char  out_buf[8001], *value_ptr;
+    char           query[10000];
+    char          *segment_pos;
 
-    value_len = strlen(value);
-    value_ptr = value;
+    value_len = (int)strlen(value);
+    value_ptr = (unsigned char*)value;
 
     strcpy(query, "INSERT INTO LOB_DATA VALUES(");
     strcat(query, blob_id);
@@ -1059,7 +1061,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value)
         int segment_len = value_len > 6000 ? 6000 : value_len;
         value_len -= segment_len;
         for (i = 0, j = 0; i < segment_len; i += 3, j+=4) {
-            encode3((unsigned char*)&value_ptr[i], &out_buf[j]);
+            encode3(&value_ptr[i], &out_buf[j]);
         }
         out_buf[j] = '\0';
         sprintf(segment_pos, "%d, %d, '%s')", segment, segment_len, out_buf);
@@ -1083,9 +1085,10 @@ static int
 blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
               char* filename)
 {
-    int         fd, i, j, segment, readlen;
-    char        in_buf[6000], out_buf[8001], query[10000];
-    char        *segment_pos;
+    int           fd, i, j, segment, readlen;
+    char          query[10000];
+    unsigned char in_buf[6000], out_buf[8001];
+    char         *segment_pos;
 
     fd = open (filename, O_RDONLY);
 
@@ -1103,10 +1106,10 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
     segment_pos = query + strlen(query);
     segment = 1;
 
-    readlen = read (fd, in_buf, 6000);
+    readlen = read(fd, in_buf, 6000);
     while (readlen > 0) {
         for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
-            encode3((unsigned char*)&in_buf[i], &out_buf[j]);
+	    encode3(&in_buf[i], &out_buf[j]);
         }
         out_buf[j] = '\0';
         sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
@@ -1228,7 +1231,7 @@ string_list_free_list (string_list_elt_t *head)
  */
 
 /* ENC is the basic 1-character encoding function to make a char printing */
-#define ENC(c) (((c) & 077) + ' ')
+#define ENC(c) (((c) & 077U) + ' ')
 
 static unsigned char
 enc_one(unsigned char c)
@@ -1243,12 +1246,12 @@ enc_one(unsigned char c)
 }
 
 static void
-encode3(unsigned char *p, char *buf)
+encode3(unsigned char *p, unsigned char *buf)
 {
     *buf++ = enc_one(*p >> 2);
-    *buf++ = enc_one(((*p << 4) & 060) | ((p[1] >> 4) & 017));
-    *buf++ = enc_one(((p[1] << 2) & 074) | ((p[2] >> 6) & 03));
-    *buf++ = enc_one(p[2] & 077);
+    *buf++ = enc_one(((*p << 4) & 060U) | ((p[1] >> 4) & 017U));
+    *buf++ = enc_one(((p[1] << 2) & 074U) | ((p[2] >> 6) & 03U));
+    *buf++ = enc_one(p[2] & 077U);
 }
 
 
