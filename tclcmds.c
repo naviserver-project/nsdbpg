@@ -98,14 +98,14 @@ static void decode3(unsigned char *p, char *buf, int n);
  */
 
 int
-Ns_PgServerInit(char *server, char *module, char *hDriver)
+Ns_PgServerInit(char *server, char *UNUSED(module), char *UNUSED(hDriver))
 {
     Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
     return NS_OK;
 }
 
 static int
-AddCmds(Tcl_Interp *interp, void *arg)
+AddCmds(Tcl_Interp *interp, void *UNUSED(arg))
 {
     Tcl_CreateObjCommand(interp, "ns_pg",   PgObjCmd,  NULL, NULL);
     Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
@@ -131,7 +131,7 @@ AddCmds(Tcl_Interp *interp, void *arg)
  */
 
 static int
-PgObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
+PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
 {
     Ns_DbHandle    *handle;
     Connection     *pconn;
@@ -364,8 +364,7 @@ ParsedSQLDupInternalRep(
  * setFromAnyProc
  */
 static int
-ParsedSQLSetFromAny(
-		    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
+ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 		    register Tcl_Obj *objPtr)	/* The object to convert. */
 {
     char      *sql    = Tcl_GetString(objPtr);
@@ -410,7 +409,7 @@ ParsedSQLSetFromAny(
  */
 
 static int
-PgBindObjCmd(ClientData dummy, Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
+PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
 {
     string_list_elt_t *bind_variables;
     string_list_elt_t *var_p;
@@ -1106,7 +1105,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
     segment_pos = query + strlen(query);
     segment = 1;
 
-    readlen = read(fd, in_buf, 6000);
+    readlen = read(fd, in_buf, 6000U);
     while (readlen > 0) {
         for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
 	    encode3(&in_buf[i], &out_buf[j]);
@@ -1118,7 +1117,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
             close(fd);
             return TCL_ERROR;
         }
-        readlen = read(fd, in_buf, 6000);
+        readlen = read(fd, in_buf, 6000U);
         segment++;
     }
     close(fd);
@@ -1231,7 +1230,7 @@ string_list_free_list (string_list_elt_t *head)
  */
 
 /* ENC is the basic 1-character encoding function to make a char printing */
-#define ENC(c) (((c) & 077U) + ' ')
+#define ENC(c) (((unsigned char)(c) & 0x3FU) + (unsigned char)' ')
 
 static unsigned char
 enc_one(unsigned char c)
@@ -1249,14 +1248,14 @@ static void
 encode3(unsigned char *p, unsigned char *buf)
 {
     *buf++ = enc_one(*p >> 2);
-    *buf++ = enc_one(((*p << 4) & 060U) | ((p[1] >> 4) & 017U));
-    *buf++ = enc_one(((p[1] << 2) & 074U) | ((p[2] >> 6) & 03U));
-    *buf++ = enc_one(p[2] & 077U);
+    *buf++ = enc_one(((*p << 4)   & 0x30U) | ((p[1] >> 4) & 0x0FU));
+    *buf++ = enc_one(((p[1] << 2) & 0x3CU) | ((p[2] >> 6) & 0x03U));
+    *buf++ = enc_one(p[2] & 0x3FU);
 }
 
 
 /* single-character decode */
-#define DEC(c)  (((c) - ' ') & 077)
+#define DEC(c)  (((c) - ' ') & 0x3FU)
 
 static unsigned char
 get_one(unsigned char c)

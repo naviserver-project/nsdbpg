@@ -73,7 +73,7 @@ static Ns_DbProc procs[] = {
     {DbFn_Cancel,       (Ns_Callback *)Flush},
     {DbFn_ResetHandle,  (Ns_Callback *)ResetHandle},
     {DbFn_ServerInit,   (Ns_Callback *)Ns_PgServerInit},
-    {0, NULL}
+    {DbFn_End, NULL}
 };
 
 static char *dateStyle = NULL;
@@ -144,7 +144,7 @@ Ns_DbDriverInit(char *driver, char *configPath)
  */
 
 static char *
-DbType(Ns_DbHandle *handle)
+DbType(Ns_DbHandle *UNUSED(handle))
 {
     return pgDbName;
 }
