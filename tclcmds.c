@@ -71,7 +71,7 @@ static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lo
 static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value);
 static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
                          char* filename);
-static int stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p);
+static Tcl_WideInt stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p);
 
 static unsigned char enc_one(unsigned char c);
 static void encode3(unsigned char *p, unsigned char *buf)
@@ -98,7 +98,7 @@ static void decode3(unsigned char *p, char *buf, int n);
  */
 
 int
-Ns_PgServerInit(char *server, char *UNUSED(module), char *UNUSED(hDriver))
+Ns_PgServerInit(char *server, char *UNUSED(module), char *UNUSED(driver))
 {
     Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
     return NS_OK;
@@ -137,7 +137,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
     Connection     *pconn;
     int            subcmd, result;
 
-    static CONST char *subcmds[] = {
+    static const char *subcmds[] = {
 	"blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file", 
 	"db", "host", "options", "port", "number", "error", "status", "ntuples",
 	NULL
@@ -426,7 +426,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     int               haveBind = arg3 ? STREQ("-bind", arg3) : 0;
     int               result, subcmd, nrFragments;
 
-    static CONST char *subcmds[] = {
+    static const char *subcmds[] = {
 	"dml", "1row", "0or1row", "select", "exec", 
 	NULL
     };
@@ -1015,13 +1015,13 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
  *
  * Lifted from Oracle driver.
  */
-static int
+static Tcl_WideInt
 stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p)
 {
-    int bytes_written = 0;
+    Tcl_WideInt bytes_written = 0;
 
     if (to_conn_p) {
-        int n = Ns_ConnContentSent(conn);
+        Tcl_WideInt n = Ns_ConnContentSent(conn);
 
         if (Ns_ConnWriteData(conn, bufp, length, 0) == NS_OK) {
             bytes_written = Ns_ConnContentSent(conn) - n;
@@ -1271,7 +1271,7 @@ get_one(unsigned char c)
 static void
 decode3(unsigned char *p, char *buf, int n)
 {
-    char c1, c2, c3, c4;
+    unsigned char c1, c2, c3, c4;
 
     c1 = get_one(p[0]);
     c2 = get_one(p[1]);

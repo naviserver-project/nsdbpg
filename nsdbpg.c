@@ -287,7 +287,7 @@ static Ns_Set *
 BindRow(Ns_DbHandle *handle)
 {
     Connection  *pconn;
-    Ns_Set      *row = NULL;
+    Ns_Set      *row;
 
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid connection.");
