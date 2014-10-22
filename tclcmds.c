@@ -59,25 +59,25 @@ static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql,
 static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], char *args);
 
 static string_list_elt_t *string_list_elt_new(char *string);
-static int string_list_len (string_list_elt_t *head);
+static int string_list_len(const string_list_elt_t *head);
 static void string_list_free_list (string_list_elt_t *head);
 
 static void parse_bind_variables(char *input,
                                  string_list_elt_t **bind_variables,
                                  string_list_elt_t **fragments);
-static int blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id);
-static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
+static int blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id);
+static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
                                int to_conn_p, char* filename);
-static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value);
-static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
+static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* value);
+static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id,
                          char* filename);
-static Tcl_WideInt stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p);
+static Tcl_WideInt stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int to_conn_p);
 
 static unsigned char enc_one(unsigned char c);
-static void encode3(unsigned char *p, unsigned char *buf)
+static void encode3(const unsigned char *p, unsigned char *buf)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
 static unsigned char get_one(unsigned char c);
-static void decode3(unsigned char *p, char *buf, int n);
+static void decode3(const unsigned char *p, char *buf, int n);
 
 
 /*
@@ -98,7 +98,7 @@ static void decode3(unsigned char *p, char *buf, int n);
  */
 
 int
-Ns_PgServerInit(char *server, char *UNUSED(module), char *UNUSED(driver))
+Ns_PgServerInit(const char *server, char *UNUSED(module), char *UNUSED(driver))
 {
     Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
     return NS_OK;
@@ -304,13 +304,12 @@ Tcl_ObjType ParsedSQLObjType = {
  * freeIntRepProc
  */
 static void
-ParsedSQLFreeInternalRep(
-			 register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with internal
+ParsedSQLFreeInternalRep(register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with internal
 							 * representation to free. */
 {
     ParsedSQL *parsedSQLptr = (ParsedSQL *)objPtr->internalRep.twoPtrValue.ptr1;
 
-    assert(parsedSQLptr);
+    assert(parsedSQLptr != NULL);
     /*fprintf(stderr, "%p ParsedSQLFreeInternalRep freeing ParsedSQL %p refCOunt %d # %d frags %p vars %p\n", 
       objPtr, 
       parsedSQLptr, objPtr->refCount,
@@ -860,7 +859,7 @@ parse_bind_variables(char *input,
  */
 
 static int
-blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
+blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id)
 {
     Connection *pconn = handle->connection;
     int         segment;
@@ -926,7 +925,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
  */
 
 static int
-blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
+blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
 		    int to_conn_p, char* filename)
 {
     Connection  *pconn = handle->connection;
@@ -1016,7 +1015,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
  * Lifted from Oracle driver.
  */
 static Tcl_WideInt
-stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p)
+stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int to_conn_p)
 {
     Tcl_WideInt bytes_written = 0;
 
@@ -1040,7 +1039,7 @@ stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_con
  */
 
 static int
-blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value)
+blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* value)
 {
     int            i, j, segment, value_len;
     unsigned char  out_buf[8001], *value_ptr;
@@ -1081,7 +1080,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id, char* value)
  */
 
 static int
-blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
+blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id,
               char* filename)
 {
     int           fd, i, j, segment, readlen;
@@ -1174,7 +1173,7 @@ string_list_elt_new(char *string)
  */
 
 static int
-string_list_len (string_list_elt_t *head)
+string_list_len(const string_list_elt_t *head)
 {
     int n;
 
@@ -1245,7 +1244,7 @@ enc_one(unsigned char c)
 }
 
 static void
-encode3(unsigned char *p, unsigned char *buf)
+encode3(const unsigned char *p, unsigned char *buf)
 {
     *buf++ = enc_one(*p >> 2);
     *buf++ = enc_one(((*p << 4)   & 0x30U) | ((p[1] >> 4) & 0x0FU));
@@ -1269,7 +1268,7 @@ get_one(unsigned char c)
 }
 
 static void
-decode3(unsigned char *p, char *buf, int n)
+decode3(const unsigned char *p, char *buf, int n)
 {
     unsigned char c1, c2, c3, c4;
 
