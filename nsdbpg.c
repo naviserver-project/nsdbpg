@@ -48,12 +48,12 @@ static int     OpenDb(Ns_DbHandle *handle);
 static int     CloseDb(Ns_DbHandle *handle);
 static Ns_Set *BindRow(Ns_DbHandle *handle);
 static int     Exec(Ns_DbHandle *handle, char *sql);
-static int     GetRow(Ns_DbHandle *handle, Ns_Set *row);
-static int     GetRowCount(Ns_DbHandle *handle);
-static int     Flush(Ns_DbHandle *handle);
+static int     GetRow(const Ns_DbHandle *handle, const Ns_Set *row);
+static int     GetRowCount(const Ns_DbHandle *handle);
+static int     Flush(const Ns_DbHandle *handle);
 static int     ResetHandle(Ns_DbHandle *handle);
 
-static void SetTransactionState(Ns_DbHandle *handle, char *sql);
+static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
 
 /*
@@ -97,7 +97,7 @@ static unsigned int id = 0;     /* Global count of connections. */
  */
 
 NS_EXPORT int
-Ns_DbDriverInit(char *driver, char *configPath)
+Ns_DbDriverInit(char *driver, const char *configPath)
 {
     char       *style;
     Ns_DString  ds;
@@ -502,7 +502,7 @@ Exec(Ns_DbHandle *handle, char *sql)
  */
 
 static int
-GetRow(Ns_DbHandle *handle, Ns_Set *row)
+GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
 {
     Connection  *pconn;
     int          i;
@@ -555,7 +555,7 @@ GetRow(Ns_DbHandle *handle, Ns_Set *row)
  */
 
 static int
-GetRowCount(Ns_DbHandle *handle)
+GetRowCount(const Ns_DbHandle *handle)
 {
     Connection  *pconn;
 
@@ -586,7 +586,7 @@ GetRowCount(Ns_DbHandle *handle)
  */
 
 static int
-Flush(Ns_DbHandle *handle)
+Flush(const Ns_DbHandle *handle)
 {
     Connection *pconn;
 
@@ -668,7 +668,7 @@ ResetHandle(Ns_DbHandle *handle)
  */
 
 static void
-SetTransactionState(Ns_DbHandle *handle, char *sql)
+SetTransactionState(const Ns_DbHandle *handle, const char *sql)
 {
     Connection *pconn = handle->connection;
 
