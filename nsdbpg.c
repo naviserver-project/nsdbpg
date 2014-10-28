@@ -469,7 +469,7 @@ Exec(Ns_DbHandle *handle, char *sql)
         break;
     case PGRES_COMMAND_OK:
         SetTransactionState(handle, sql);
-        pconn->nTuples = atoi(PQcmdTuples(pconn->res));
+        pconn->nTuples = strtol(PQcmdTuples(pconn->res), NULL, 10);
         /*pconn->nTuples = PQntuples(pconn->res);*/
         result = NS_DML;
         break;

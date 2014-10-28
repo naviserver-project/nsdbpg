@@ -100,8 +100,7 @@ static void decode3(const unsigned char *p, char *buf, int n);
 int
 Ns_PgServerInit(const char *server, char *UNUSED(module), char *UNUSED(driver))
 {
-    Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
-    return NS_OK;
+    return Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
 }
 
 static int
@@ -422,7 +421,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     Ns_Set            *set   = NULL;
     char              *cmd, *sql, *value = NULL, *p;
     char              *arg3 = argc > 3 ? Tcl_GetString(argv[3]) : NULL;
-    int               haveBind = arg3 ? STREQ("-bind", arg3) : 0;
+    int               haveBind = arg3 != NULL ? STREQ("-bind", arg3) : 0;
     int               result, subcmd, nrFragments;
 
     static const char *subcmds[] = {
@@ -435,8 +434,8 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     };
 
     if (argc < 4 
-	|| (!haveBind && (argc != 4))
-        || (haveBind && (argc != 6))) {
+	|| (haveBind == 0 && (argc != 4))
+        || (haveBind != 0 && (argc != 6))) {
         return BadArgs(interp, argv, "dbId sql");
     }
 
@@ -890,7 +889,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id)
             break;
         }
 
-	byte_len = atoi(PQgetvalue(pconn->res, 0, 0));
+	byte_len = strtol(PQgetvalue(pconn->res, 0, 0), NULL, 10);
         data_column = PQgetvalue(pconn->res, 0, 1);
 	/* nbytes is not used 
 	   nbytes += byte_len;
@@ -986,7 +985,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
             break;
         }
 
-        byte_len = atoi(PQgetvalue(pconn->res, 0, 0));
+        byte_len = strtol(PQgetvalue(pconn->res, 0, 0), NULL, 10);
         data_column = PQgetvalue(pconn->res, 0, 1);
         n = byte_len;
         for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
@@ -1022,7 +1021,7 @@ stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int t
     if (to_conn_p) {
         Tcl_WideInt n = Ns_ConnContentSent(conn);
 
-        if (Ns_ConnWriteData(conn, bufp, length, 0) == NS_OK) {
+        if (Ns_ConnWriteData(conn, bufp, length, 0U) == NS_OK) {
             bytes_written = Ns_ConnContentSent(conn) - n;
         } else {
             bytes_written = 0;
