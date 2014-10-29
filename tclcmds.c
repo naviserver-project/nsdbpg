@@ -419,10 +419,11 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     Ns_DbHandle       *handle;
     Ns_Set            *rowPtr;
     Ns_Set            *set   = NULL;
-    char              *cmd, *sql, *value = NULL, *p;
-    char              *arg3 = argc > 3 ? Tcl_GetString(argv[3]) : NULL;
-    int               haveBind = arg3 != NULL ? STREQ("-bind", arg3) : 0;
+    char              *cmd, *sql;
+    char              *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
+    int               haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
     int               result, subcmd, nrFragments;
+    const char*       value = NULL, *p;
 
     static const char *subcmds[] = {
 	"dml", "1row", "0or1row", "select", "exec", 
@@ -521,7 +522,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
             if (var_p != NULL) {
                 if (set == NULL) {
-                    value = (char*)Tcl_GetVar(interp, var_p->string, 0);
+                    value = Tcl_GetVar(interp, var_p->string, 0);
                 } else {
                     value = Ns_SetGet(set, var_p->string);
                 }
