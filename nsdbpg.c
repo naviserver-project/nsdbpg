@@ -99,7 +99,7 @@ static unsigned int id = 0;     /* Global count of connections. */
 NS_EXPORT int
 Ns_DbDriverInit(char *driver, const char *configPath)
 {
-    char       *style;
+    const char *style;
     Ns_DString  ds;
 
     if (Ns_DbRegisterDriver(driver, &procs[0]) != NS_OK) {
