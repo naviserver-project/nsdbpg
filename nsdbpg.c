@@ -421,7 +421,7 @@ Exec(Ns_DbHandle *handle, char *sql)
          */
 
         if (OpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
-            if (in_transaction) {
+            if (in_transaction != 0) {
                 Ns_Log(Notice, "nsdbpg: In transaction, conn died, error returned");
             }
             Ns_DStringFree(&dsSql);

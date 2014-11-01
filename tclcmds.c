@@ -336,11 +336,8 @@ ParsedSQLDupInternalRep(
 {
     ParsedSQL *srcPtr = (ParsedSQL *)srcObjPtr->internalRep.twoPtrValue.ptr1, *dstPtr;
 
-    //fprintf(stderr, "ParsedSQLDupInternalRep src %p dst %p\n", srcObjPtr, dstObjPtr);
-  
     dstPtr = ns_calloc(1, sizeof(ParsedSQL));
     if (srcPtr->sql_fragments) {
-	//fprintf(stderr, "HAVE TO DUP FRAGMENTS OR TO REGENERATE IT\n");
 	dstPtr->sql_fragments = NULL;
     }
     if (srcPtr->bind_variables) {
@@ -375,7 +372,6 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
      */
     parse_bind_variables(sql, &srcPtr->bind_variables, &srcPtr->sql_fragments);
     srcPtr->nrFragments = string_list_len(srcPtr->bind_variables);
-    //fprintf(stderr, "ParsedSQLSetFromAny\n");
 
     /*
      * Free the old interal representation and store own structure as internal
@@ -465,7 +461,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
     cmd = Tcl_GetString(argv[1]);
 
-    if (haveBind) {
+    if (haveBind != 0) {
 	char *setId = Tcl_GetString(argv[4]);
         set = Ns_TclGetSet(interp, setId);
         if (set == NULL) {
@@ -529,7 +525,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                 if (value == NULL) {
                     Tcl_AppendResult (interp, "undefined variable `", var_p->string,
                                       "'", NULL);
-                    if (dsPtr) { Ns_DStringFree(dsPtr); }
+                    if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
                     return TCL_ERROR;
                 }
 
@@ -593,7 +589,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
         }
     }
 
-    if (dsPtr) {
+    if (dsPtr != NULL) {
 	sql = Ns_DStringValue(dsPtr);
     }
 
@@ -650,7 +646,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 	break;
     }
 
-    if (dsPtr) { Ns_DStringFree(dsPtr); }
+    if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
 
     return TCL_OK;
 }
@@ -698,7 +694,7 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql, Ns_DString
     }
     Tcl_AppendResult(interp, "\nSQL: ", sql, NULL);
 
-    if (dsPtr) { Ns_DStringFree(dsPtr); }
+    if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
 
     return TCL_ERROR;
 }
@@ -935,7 +931,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
     int          fd = -1;
     char        *segment_pos;
 
-    if (to_conn_p) {
+    if (to_conn_p != 0) {
         conn = Ns_TclGetConn(interp);
 
         if (conn == NULL) {
@@ -998,7 +994,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
     }
 
  bailout:
-    if (!to_conn_p) {
+    if (to_conn_p == 0) {
         close (fd);
     }
 
@@ -1019,7 +1015,7 @@ stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int t
 {
     Tcl_WideInt bytes_written = 0;
 
-    if (to_conn_p) {
+    if (to_conn_p != 0) {
         Tcl_WideInt n = Ns_ConnContentSent(conn);
 
         if (Ns_ConnWriteData(conn, bufp, length, 0U) == NS_OK) {
