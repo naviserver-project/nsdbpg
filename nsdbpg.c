@@ -294,7 +294,7 @@ BindRow(Ns_DbHandle *handle)
         return NULL;
     }
 
-    if (!handle->fetchingRows) {
+    if (handle->fetchingRows == 0) {
         Ns_Log(Error, "nsdbpg(%s): No rows waiting to bind.", handle->datasource);
         return NULL;
     }

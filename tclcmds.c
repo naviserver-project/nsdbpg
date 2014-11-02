@@ -71,7 +71,8 @@ static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const ch
 static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* value);
 static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id,
                          char* filename);
-static Tcl_WideInt stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int to_conn_p);
+static ssize_t stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, 
+				     size_t length, int to_conn_p);
 
 static unsigned char enc_one(unsigned char c);
 static void encode3(const unsigned char *p, unsigned char *buf)
@@ -194,7 +195,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
                              Tcl_GetString(argv[0]), " command dbId blobId value\"", NULL);
             return TCL_ERROR;
         }
-        if (!pconn->in_transaction) {
+        if (pconn->in_transaction == 0) {
             Tcl_AppendResult(interp,
                              "blob_put only allowed in transaction", NULL);
             return TCL_ERROR;
@@ -207,7 +208,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
                              Tcl_GetString(argv[0]), " command dbId blobId filename\"", NULL);
             return TCL_ERROR;
         }
-        if (!pconn->in_transaction) {
+        if (pconn->in_transaction == 0) {
             Tcl_AppendResult(interp,
                              "blob_dml_file only allowed in transaction", NULL);
             return TCL_ERROR;
@@ -336,7 +337,7 @@ ParsedSQLDupInternalRep(
 {
     ParsedSQL *srcPtr = (ParsedSQL *)srcObjPtr->internalRep.twoPtrValue.ptr1, *dstPtr;
 
-    dstPtr = ns_calloc(1, sizeof(ParsedSQL));
+    dstPtr = ns_calloc(1U, sizeof(ParsedSQL));
     if (srcPtr->sql_fragments) {
 	dstPtr->sql_fragments = NULL;
     }
@@ -363,7 +364,7 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 		    register Tcl_Obj *objPtr)	/* The object to convert. */
 {
     char      *sql    = Tcl_GetString(objPtr);
-    ParsedSQL *srcPtr = ns_calloc(1, sizeof(ParsedSQL));
+    ParsedSQL *srcPtr = ns_calloc(1U, sizeof(ParsedSQL));
 
     /*
      * Parse the query string and find the bind variables.  Return
@@ -475,7 +476,9 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
     if (sqlObj->typePtr != &ParsedSQLObjType) {
 	Ns_Log(Debug, "%p convert type %s to sql <%s>", 
-	       sqlObj, sqlObj->typePtr ? sqlObj->typePtr->name : "none", Tcl_GetString(sqlObj));
+	       sqlObj, 
+	       (sqlObj->typePtr != NULL) ? sqlObj->typePtr->name : "none", 
+	       Tcl_GetString(sqlObj));
 	if (Tcl_ConvertToType(interp, sqlObj, &ParsedSQLObjType) != TCL_OK) {
 	    return TCL_ERROR;
 	}
@@ -529,7 +532,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                     return TCL_ERROR;
                 }
 
-                if ( strlen(value) == 0 ) {
+                if ( strlen(value) == 0U ) {
                     /*
                      * DRB: If the Tcl variable contains the empty string, pass a NULL
                      * as the value.
@@ -556,7 +559,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                      * This conversion is done before optimization of the query, so indices are
                      * still used when appropriate.
                      */
-                    Ns_DStringAppend(dsPtr, needEscapeStringSyntax ? "E'" : "'");
+                    Ns_DStringAppend(dsPtr, (needEscapeStringSyntax != 0) ? "E'" : "'");
 
                     /*
                      * We need to double-quote quotes and
@@ -565,13 +568,13 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                     for (p = value; *p; p++) {
                         if (unlikely(*p == '\'')) {
                             if (likely(p > value)) {
-                                Ns_DStringNAppend(dsPtr, value, p-value);
+                                Ns_DStringNAppend(dsPtr, value, p - value);
                             }
                             value = p;
                             Ns_DStringNAppend(dsPtr, "'", 1);
                         } else if (unlikely(*p == '\\')) {
                             if (likely(p > value)) {
-                                Ns_DStringNAppend(dsPtr, value, p-value);
+                                Ns_DStringNAppend(dsPtr, value, p - value);
                             }
                             value = p;
                             Ns_DStringNAppend(dsPtr, "\\", 1);
@@ -579,7 +582,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                     }
 
                     if (likely(p > value)) {
-			Ns_DStringNAppend(dsPtr, value, p-value);
+			Ns_DStringNAppend(dsPtr, value, p - value);
                     }
 
                     Ns_DStringNAppend(dsPtr, "'", 1);
@@ -605,7 +608,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
         if (rowPtr == NULL) {
             return DbFail(interp, handle, cmd, sql, dsPtr);
         }
-        Ns_TclEnterSet(interp, rowPtr, 1);
+        (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
 	break;
 
     case ZeroOrOneRowIdx:
@@ -619,7 +622,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 	    if (nrows == 0) {
 		Ns_SetFree(rowPtr);
 	    } else {
-		Ns_TclEnterSet(interp, rowPtr, 1);
+		(void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
 	    }
 	}
 	break;
@@ -629,7 +632,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
         if (rowPtr == NULL) {
             return DbFail(interp, handle, cmd, sql, dsPtr);
         }
-        Ns_TclEnterSet(interp, rowPtr, 0);
+        (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_STATIC);
 	break;
 
     case ExecIdx:
@@ -759,9 +762,9 @@ parse_bind_variables(char *input,
     string_list_elt_t *felt, *fhead=0, *ftail=0;
     int current_string_length = 0;
 
-    fragbuf = (char*)ns_malloc((strlen(input)+1)*sizeof(char));
+    fragbuf = ns_malloc((strlen(input) + 1U) * sizeof(char));
     fp = fragbuf;
-    bindbuf = (char*)ns_malloc((strlen(input)+1)*sizeof(char));
+    bindbuf = ns_malloc((strlen(input) + 1U) * sizeof(char));
     bp = bindbuf;
 
     for (p = input, state=base, lastchar='\0'; *p != '\0'; lastchar = *p, p++) {
@@ -801,7 +804,7 @@ parse_bind_variables(char *input,
                 state = base;
                 bp = bindbuf;
                 fp = fragbuf;
-            } else if (!(*p == '_' || *p == '$' || *p == '#' || isalnum((int)*p))) {
+            } else if (!(*p == '_' || *p == '$' || *p == '#' || CHARTYPE(alnum, *p) != 0)) {
                 *bp = '\0';
                 elt = string_list_elt_new(ns_strdup(bindbuf));
                 if (tail == NULL) {
@@ -970,7 +973,8 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
 
     for (;;) {
         char    *data_column;
-        int     i, j, n, byte_len;
+        int     i, j;
+	size_t  n, byte_len;
         char    buf[6000];
 
         sprintf(segment_pos, "%d", segment);
@@ -989,7 +993,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
             decode3((unsigned char*)&data_column[i], &buf[j], n);
         }
 
-        stream_actually_write(fd, conn, buf, byte_len, to_conn_p);
+        (void) stream_actually_write(fd, conn, buf, byte_len, to_conn_p);
         segment++;
     }
 
@@ -1010,10 +1014,10 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
  *
  * Lifted from Oracle driver.
  */
-static Tcl_WideInt
-stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int to_conn_p)
+static ssize_t
+stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_conn_p)
 {
-    Tcl_WideInt bytes_written = 0;
+    ssize_t bytes_written = 0;
 
     if (to_conn_p != 0) {
         Tcl_WideInt n = Ns_ConnContentSent(conn);
@@ -1024,7 +1028,7 @@ stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, int length, int t
             bytes_written = 0;
         }
     } else {
-        bytes_written = write(fd, bufp, length);
+	bytes_written = write(fd, bufp, length);
     }
 
     return bytes_written;
@@ -1057,7 +1061,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* val
         for (i = 0, j = 0; i < segment_len; i += 3, j+=4) {
             encode3(&value_ptr[i], &out_buf[j]);
         }
-        out_buf[j] = '\0';
+        out_buf[j] = UCHAR('\0');
         sprintf(segment_pos, "%d, %d, '%s')", segment, segment_len, out_buf);
         if (Ns_DbExec(handle, query) != NS_DML) {
             Tcl_AppendResult(interp, "Error inserting data into BLOB", NULL);
@@ -1231,10 +1235,10 @@ static unsigned char
 enc_one(unsigned char c)
 {
     c = ENC(c);
-    if (c == '\'') {
-	c = 'a';
-    } else if (c == '\\') {
-	c = 'b';
+    if (c == UCHAR('\'')) {
+	c = UCHAR('a');
+    } else if (c == UCHAR('\\')) {
+	c = UCHAR('b');
     }
     return c;
 }
@@ -1250,15 +1254,15 @@ encode3(const unsigned char *p, unsigned char *buf)
 
 
 /* single-character decode */
-#define DEC(c)  (((c) - ' ') & 0x3FU)
+#define DEC(c)  (((c) - UCHAR(' ')) & 0x3FU)
 
 static unsigned char
 get_one(unsigned char c)
 {
-    if (c == 'a') {
-	return '\'';
-    } else if (c == 'b') {
-	return '\\';
+    if (c == UCHAR('a')) {
+	return UCHAR('\'');
+    } else if (c == UCHAR('b')) {
+	return UCHAR('\\');
     }
     return c;
 }
