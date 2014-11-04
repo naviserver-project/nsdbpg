@@ -39,7 +39,6 @@
 
 
 #include <nsdb.h>
-#include <nscheck.h>
 #include <libpq-fe.h>
 
 /*

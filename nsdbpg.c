@@ -255,7 +255,7 @@ CloseDb(Ns_DbHandle *handle) {
 
     pconn = handle->connection;
 
-    if (handle->verbose) {
+    if (handle->verbose == NS_TRUE) {
         Ns_Log(Notice, "nsdbpg(%s):  Closing connection: %u",
                handle->driver, pconn->id);
     }
@@ -365,7 +365,7 @@ Exec(Ns_DbHandle *handle, char *sql)
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
         Ns_DStringAppend(&dsSql, ";");
     }
-    if (handle->verbose) {
+    if (handle->verbose == NS_TRUE) {
         Ns_Log(Notice, "nsdbpg: Querying '%s'", dsSql.string);
     }
 
@@ -421,7 +421,7 @@ Exec(Ns_DbHandle *handle, char *sql)
          */
 
         if (OpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
-            if (in_transaction != 0) {
+            if (in_transaction == NS_TRUE) {
                 Ns_Log(Notice, "nsdbpg: In transaction, conn died, error returned");
             }
             Ns_DStringFree(&dsSql);
@@ -635,8 +635,8 @@ ResetHandle(Ns_DbHandle *handle)
 
     pconn = handle->connection;
 
-    if (pconn->in_transaction) {
-        if (handle->verbose) {
+    if (pconn->in_transaction == NS_TRUE) {
+        if (handle->verbose == NS_TRUE) {
             Ns_Log(Warning, "nsdbpg: Rolling back transaction.");
         }
         if (Ns_DbExec(handle, "rollback") != PGRES_COMMAND_OK) {
@@ -677,19 +677,19 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
     }
     if (!strncasecmp(sql, "begin", 5)) {
         pconn->in_transaction = NS_TRUE;
-        if (handle->verbose) {
+        if (handle->verbose == NS_TRUE) {
             Ns_Log(Notice, "nsdbpg: Entering transaction.");
         }
     } else if (!strncasecmp(sql, "end", 3)
                || !strncasecmp(sql, "commit", 6)) {
         pconn->in_transaction = NS_FALSE;
-        if (handle->verbose) {
+        if (handle->verbose == NS_TRUE) {
             Ns_Log(Notice, "nsdbpg: Committing transaction.");
         }
     } else if (!strncasecmp(sql, "abort", 5)
                || !strncasecmp(sql, "rollback", 8)) {
         pconn->in_transaction = NS_FALSE;
-        if (handle->verbose) {
+        if (handle->verbose == NS_TRUE) {
             Ns_Log(Notice, "nsdbpg: Rolling back transaction.");
         }
     }

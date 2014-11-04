@@ -318,8 +318,8 @@ ParsedSQLFreeInternalRep(register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with 
       parsedSQLptr->bind_variables
       );*/
 
-    if (parsedSQLptr->sql_fragments)  {string_list_free_list(parsedSQLptr->sql_fragments);}
-    if (parsedSQLptr->bind_variables) {string_list_free_list(parsedSQLptr->bind_variables);}
+    if (parsedSQLptr->sql_fragments != NULL)  {string_list_free_list(parsedSQLptr->sql_fragments);}
+    if (parsedSQLptr->bind_variables != NULL) {string_list_free_list(parsedSQLptr->bind_variables);}
   
     /*
      * ... and free structure
@@ -338,10 +338,10 @@ ParsedSQLDupInternalRep(
     ParsedSQL *srcPtr = (ParsedSQL *)srcObjPtr->internalRep.twoPtrValue.ptr1, *dstPtr;
 
     dstPtr = ns_calloc(1U, sizeof(ParsedSQL));
-    if (srcPtr->sql_fragments) {
+    if (srcPtr->sql_fragments != NULL) {
 	dstPtr->sql_fragments = NULL;
     }
-    if (srcPtr->bind_variables) {
+    if (srcPtr->bind_variables != NULL) {
 	dstPtr->bind_variables = NULL;
     }
     dstPtr->nrFragments = srcPtr->nrFragments;
@@ -756,8 +756,7 @@ parse_bind_variables(char *input,
 {
     char *p, lastchar;
     enum { base, instr, bind } state;
-    char *bindbuf, *bp;
-    char *fragbuf, *fp;
+    char *bindbuf, *bp, *fragbuf, *fp;
     string_list_elt_t *elt, *head=0, *tail=0;
     string_list_elt_t *felt, *fhead=0, *ftail=0;
     int current_string_length = 0;
@@ -975,7 +974,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
         char    *data_column;
         int     i, j;
 	size_t  n, byte_len;
-        char    buf[6000];
+        char    buf[6001];
 
         sprintf(segment_pos, "%d", segment);
         if (Ns_DbExec(handle, query) != NS_ROWS) {
