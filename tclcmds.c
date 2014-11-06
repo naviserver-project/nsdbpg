@@ -1108,7 +1108,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id,
         for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
 	    encode3(&in_buf[i], &out_buf[j]);
         }
-        out_buf[j] = '\0';
+        out_buf[j] = UCHAR('\0');
         sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
         if (Ns_DbExec(handle, query) != NS_DML) {
             Tcl_AppendResult(interp, "Error inserting data into BLOB", NULL);
