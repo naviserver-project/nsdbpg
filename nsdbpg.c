@@ -639,7 +639,7 @@ ResetHandle(Ns_DbHandle *handle)
         if (handle->verbose == NS_TRUE) {
             Ns_Log(Warning, "nsdbpg: Rolling back transaction.");
         }
-        if (Ns_DbExec(handle, "rollback") != PGRES_COMMAND_OK) {
+        if (Ns_DbExec(handle, "rollback") != (int)PGRES_COMMAND_OK) {
             Ns_Log(Error, "nsdbpg: Rollback failed.");
         }
         return NS_ERROR;
