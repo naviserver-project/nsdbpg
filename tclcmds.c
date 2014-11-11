@@ -251,22 +251,22 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
 
     case DbIdx:
 	if (argc != 3) break;
-        Tcl_SetResult(interp, (char *) PQdb(pconn->pgconn), TCL_STATIC);
+        Tcl_SetResult(interp, PQdb(pconn->pgconn), TCL_STATIC);
 	return TCL_OK;
 
     case HostIdx: 
 	if (argc != 3) break;
-        Tcl_SetResult(interp, (char *) PQhost(pconn->pgconn), TCL_STATIC);
+        Tcl_SetResult(interp, PQhost(pconn->pgconn), TCL_STATIC);
 	return TCL_OK;
 
     case OptionsIdx:
 	if (argc != 3) break;
-        Tcl_SetResult(interp, (char *) PQoptions(pconn->pgconn), TCL_STATIC);
+        Tcl_SetResult(interp, PQoptions(pconn->pgconn), TCL_STATIC);
 	return TCL_OK;
 
     case PortIdx:
 	if (argc != 3) break;
-        Tcl_SetResult(interp, (char *) PQport(pconn->pgconn), TCL_STATIC);
+        Tcl_SetResult(interp, PQport(pconn->pgconn), TCL_STATIC);
 	return TCL_OK;
 
     case NumberIdx:
@@ -276,7 +276,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
     
     case ErrorIdx:
 	if (argc != 3) break;
-        Tcl_SetResult(interp, (char *) PQerrorMessage(pconn->pgconn), TCL_STATIC);
+        Tcl_SetResult(interp, PQerrorMessage(pconn->pgconn), TCL_STATIC);
 	return TCL_OK;
 
     case StatusIdx:
@@ -501,14 +501,14 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
     if (sqlObj->typePtr != &ParsedSQLObjType) {
 	Ns_Log(Debug, "%p convert type %s to sql <%s>", 
-	       sqlObj, 
+	       (void *)sqlObj, 
 	       (sqlObj->typePtr != NULL) ? sqlObj->typePtr->name : "none", 
 	       Tcl_GetString(sqlObj));
 	if (Tcl_ConvertToType(interp, sqlObj, &ParsedSQLObjType) != TCL_OK) {
 	    return TCL_ERROR;
 	}
     } else {
-	Ns_Log(Debug, "%p REUSE sql", sqlObj);
+	Ns_Log(Debug, "%p REUSE sql", (void *)sqlObj);
     }
     assert(sqlObj->typePtr == &ParsedSQLObjType);
 
@@ -933,7 +933,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
 	}
 
 	if (fd > 0 || conn != NULL) {
-	    (void) stream_actually_write(fd, conn, buf, byte_len, (conn != NULL) ? 1 : 0);
+	    (void) stream_actually_write(fd, conn, buf, (size_t)byte_len, (conn != NULL) ? 1 : 0);
 	} else {
 	    buf[byte_len] = '\0';
 	    Tcl_AppendResult(interp, buf, NULL);
@@ -1056,15 +1056,15 @@ stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, in
     assert(fd > -1 || conn != NULL);
 
     if (to_conn_p != 0) {
-        Tcl_WideInt n = Ns_ConnContentSent(conn);
+        size_t n = Ns_ConnContentSent(conn);
 
         if (Ns_ConnWriteData(conn, bufp, length, 0U) == NS_OK) {
-            bytes_written = Ns_ConnContentSent(conn) - n;
+            bytes_written = (ssize_t)(Ns_ConnContentSent(conn) - n);
         } else {
             bytes_written = 0;
         }
     } else {
-	bytes_written = write(fd, bufp, length);
+	bytes_written = ns_write(fd, bufp, length);
     }
 
     return bytes_written;

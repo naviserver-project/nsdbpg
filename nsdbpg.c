@@ -60,7 +60,7 @@ static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
  * Local variables defined in this file.
  */
 
-static Ns_DbProc procs[] = {
+static const Ns_DbProc procs[] = {
     {DbFn_DbType,       (Ns_Callback *)DbType},
     {DbFn_Name,         (Ns_Callback *)DbType},
     {DbFn_OpenDb,       (Ns_Callback *)OpenDb},
@@ -359,7 +359,7 @@ Exec(Ns_DbHandle *handle, char *sql)
     Ns_DStringInit(&dsSql);
     Ns_DStringAppend(&dsSql, sql);
 
-    while (dsSql.length > 0 && isspace(dsSql.string[dsSql.length - 1])) {
+    while (dsSql.length > 0 && CHARTYPE(space, dsSql.string[dsSql.length - 1]) != 0) {
         dsSql.string[--dsSql.length] = '\0';
     }
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
@@ -385,7 +385,7 @@ Exec(Ns_DbHandle *handle, char *sql)
      * chances and guard against infinite retries with a counter.
      */
 
-    while (PQstatus(pconn->pgconn) == CONNECTION_BAD && retry_count--) {
+    while (PQstatus(pconn->pgconn) == CONNECTION_BAD && retry_count-- > 0) {
 
         int in_transaction = pconn->in_transaction;
 
@@ -420,7 +420,7 @@ Exec(Ns_DbHandle *handle, char *sql)
          * you'll find no sympathy on my part.
          */
 
-        if (OpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
+        if (OpenDb(handle) == NS_ERROR || in_transaction == 1 || retry_query == 0) {
             if (in_transaction == NS_TRUE) {
                 Ns_Log(Notice, "nsdbpg: In transaction, conn died, error returned");
             }
@@ -505,7 +505,7 @@ static int
 GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
 {
     Connection  *pconn;
-    int          i;
+    size_t       i;
 
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: No connection.");
@@ -530,7 +530,7 @@ GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
         pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
         return NS_END_DATA;
     }
-    for (i = 0; i < pconn->nCols; i++) {
+    for (i = 0U; i < (size_t)pconn->nCols; i++) {
         Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, i));
     }
     pconn->curTuple++;
@@ -675,19 +675,19 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
     while (*sql == ' ') {
         sql++;
     }
-    if (!strncasecmp(sql, "begin", 5)) {
+    if (strncasecmp(sql, "begin", 5) == 0) {
         pconn->in_transaction = NS_TRUE;
         if (handle->verbose == NS_TRUE) {
             Ns_Log(Notice, "nsdbpg: Entering transaction.");
         }
-    } else if (!strncasecmp(sql, "end", 3)
-               || !strncasecmp(sql, "commit", 6)) {
+    } else if (strncasecmp(sql, "end", 3) == 0
+               || strncasecmp(sql, "commit", 6) == 0) {
         pconn->in_transaction = NS_FALSE;
         if (handle->verbose == NS_TRUE) {
             Ns_Log(Notice, "nsdbpg: Committing transaction.");
         }
-    } else if (!strncasecmp(sql, "abort", 5)
-               || !strncasecmp(sql, "rollback", 8)) {
+    } else if (strncasecmp(sql, "abort", 5) == 0
+               || strncasecmp(sql, "rollback", 8) == 0) {
         pconn->in_transaction = NS_FALSE;
         if (handle->verbose == NS_TRUE) {
             Ns_Log(Notice, "nsdbpg: Rolling back transaction.");
