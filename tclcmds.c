@@ -288,6 +288,10 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
 	if (argc != 3) break;
         Tcl_SetObjResult(interp, Tcl_NewIntObj(pconn->nTuples));
 	return TCL_OK;
+
+    default:
+	/* should not happen */
+	assert(subcmd && 0);
     }
 
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -672,6 +676,10 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
             return DbFail(interp, handle, cmd, sql, dsPtr);
         }
 	break;
+
+    default:
+	/* should not happen */
+	assert(subcmd && 0);
     }
 
     if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
@@ -856,6 +864,10 @@ parse_bind_variables(char *input,
                 *bp++ = *p;
             }
             break;
+
+        default:
+            /* should not happen */
+            assert(state && 0);
         }
     }
 
@@ -1337,3 +1349,12 @@ decode3(const unsigned char *p, char *buf, int n)
         *buf++ = DEC(c3) << 6 | DEC(c4);
     }
 }
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * indent-tabs-mode: nil
+ * End:
+ */
