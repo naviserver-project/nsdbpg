@@ -41,10 +41,10 @@
  * for parsing SQL statements.
  */
 
-typedef struct _string_list_elt {
-    struct _string_list_elt *next;
-    char                    *string;
-} string_list_elt_t;
+typedef struct linkedListElement_t {
+    struct linkedListElement_t *next;
+    const char                 *string;
+} linkedListElement_t;
 
 
 /*
@@ -55,36 +55,36 @@ static Tcl_ObjCmdProc PgObjCmd;
 static Tcl_ObjCmdProc PgBindObjCmd;
 static Ns_TclTraceProc AddCmds;
 
-static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql, Ns_DString *dsPtr)
+static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql, Ns_DString *dsPtr)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4) NS_GNUC_NONNULL(5);
 
-static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], char *args)
+static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
-static string_list_elt_t *string_list_elt_new(char *string)
+static linkedListElement_t *linkedListElement_new(const char *string)
     NS_GNUC_NONNULL(1)
     NS_GNUC_RETURNS_NONNULL;
 
-static int string_list_len(const string_list_elt_t *head);
+static int LinkedList_len(const linkedListElement_t *head);
 
-static void string_list_free_list (string_list_elt_t *head);
+static void LinkedList_free_list (linkedListElement_t *head);
 
-static void parse_bind_variables(char *input,
-                                 string_list_elt_t **bind_variables,
-                                 string_list_elt_t **fragments)
+static void parse_bind_variables(const char *input,
+                                 linkedListElement_t **bind_variables,
+                                 linkedListElement_t **fragments)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
-static int blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id)
+static int blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
-static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
-                               int to_conn_p, char* filename)
+static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
+                               int to_conn_p, const char *filename)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
-static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* value)
+static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const char *value)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
 
-static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* filename)
+static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const char *filename)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
 
 static ssize_t stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_conn_p)
@@ -312,8 +312,8 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
  */
 
 typedef struct {
-    string_list_elt_t *sql_fragments;
-    string_list_elt_t *bind_variables;
+    linkedListElement_t *sql_fragments;
+    linkedListElement_t *bind_variables;
     int nrFragments;
 } ParsedSQL;
 
@@ -347,8 +347,8 @@ ParsedSQLFreeInternalRep(register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with 
       parsedSQLptr->bind_variables
       );*/
 
-    if (parsedSQLptr->sql_fragments != NULL)  {string_list_free_list(parsedSQLptr->sql_fragments);}
-    if (parsedSQLptr->bind_variables != NULL) {string_list_free_list(parsedSQLptr->bind_variables);}
+    if (parsedSQLptr->sql_fragments != NULL)  {LinkedList_free_list(parsedSQLptr->sql_fragments);}
+    if (parsedSQLptr->bind_variables != NULL) {LinkedList_free_list(parsedSQLptr->bind_variables);}
   
     /*
      * ... and free structure
@@ -392,8 +392,8 @@ static int
 ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 		    register Tcl_Obj *objPtr)	/* The object to convert. */
 {
-    char      *sql    = Tcl_GetString(objPtr);
-    ParsedSQL *srcPtr = ns_calloc(1U, sizeof(ParsedSQL));
+    const char *sql    = Tcl_GetString(objPtr);
+    ParsedSQL  *srcPtr = ns_calloc(1U, sizeof(ParsedSQL));
 
     /*
      * Parse the query string and find the bind variables.  Return
@@ -401,7 +401,7 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
      * bind variable values interpolated into the original query.
      */
     parse_bind_variables(sql, &srcPtr->bind_variables, &srcPtr->sql_fragments);
-    srcPtr->nrFragments = string_list_len(srcPtr->bind_variables);
+    srcPtr->nrFragments = LinkedList_len(srcPtr->bind_variables);
 
     /*
      * Free the old interal representation and store own structure as internal
@@ -435,21 +435,20 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 static int
 PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
 {
-    string_list_elt_t *bind_variables;
-    string_list_elt_t *var_p;
-    string_list_elt_t *sql_fragments;
-    string_list_elt_t *frag_p;
+    linkedListElement_t *bind_variables;
+    linkedListElement_t *var_p;
+    linkedListElement_t *sql_fragments;
+    linkedListElement_t *frag_p;
     Ns_DString         ds, *dsPtr = NULL;
     Tcl_Obj           *sqlObj;
     ParsedSQL         *parsedSQLptr;
     Ns_DbHandle       *handle;
-    Ns_Set            *rowPtr;
-    Ns_Set            *set   = NULL;
-    char              *cmd, *sql;
-    char              *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
-    int               haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
-    int               result, subcmd, nrFragments;
-    const char*       value = NULL, *p;
+    Ns_Set            *rowPtr, *set = NULL;
+    char              *sql;
+    const char        *cmd, *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
+    const char        *value = NULL, *p;
+    int                result, subcmd, nrFragments;
+    int                haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
 
     static const char *subcmds[] = {
 	"dml", "1row", "0or1row", "select", "exec", 
@@ -492,7 +491,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     cmd = Tcl_GetString(argv[1]);
 
     if (haveBind != 0) {
-	char *setId = Tcl_GetString(argv[4]);
+	const char *setId = Tcl_GetString(argv[4]);
         set = Ns_TclGetSet(interp, setId);
         if (set == NULL) {
             Tcl_AppendResult (interp, "invalid set id `", setId, "'", NULL);
@@ -525,7 +524,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 	 * reparse sql_fragments 
 	 */
 	parse_bind_variables(sql, &parsedSQLptr->bind_variables, &parsedSQLptr->sql_fragments);
-	parsedSQLptr->nrFragments = string_list_len(parsedSQLptr->bind_variables);
+	parsedSQLptr->nrFragments = LinkedList_len(parsedSQLptr->bind_variables);
     }
     bind_variables = parsedSQLptr->bind_variables;
     sql_fragments = parsedSQLptr->sql_fragments;
@@ -706,10 +705,10 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
  */
 
 static int
-DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char *sql, Ns_DString *dsPtr)
+DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql, Ns_DString *dsPtr)
 {
     Connection *pconn = handle->connection;
-    char       *pqerror;
+    const char *pqerror;
 
     assert(interp != NULL);
     assert(handle != NULL);
@@ -758,7 +757,7 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char *sql, Ns_DString
  */
 
 static int
-BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], char *args)
+BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
 {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
 		     Tcl_GetString(argv[0]), " ", Tcl_GetString(argv[1]), NULL);
@@ -789,17 +788,17 @@ BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], char *args)
  */
 
 static void
-parse_bind_variables(char *input,
-                     string_list_elt_t **bind_variables,
-                     string_list_elt_t **fragments)
+parse_bind_variables(const char *input,
+                     linkedListElement_t **bind_variables,
+                     linkedListElement_t **fragments)
 {
-    char *p, lastchar;
     enum { base, instr, bind } state;
-    char *bindbuf, *bp, *fragbuf, *fp;
-    string_list_elt_t *elt, *head=0, *tail=0;
-    string_list_elt_t *felt, *fhead=0, *ftail=0;
-    int current_string_length = 0;
-    size_t inputLen;
+    const char  *p;
+    char        *bindbuf, *bp, *fragbuf, *fp, lastchar;
+    int          current_string_length = 0;
+    size_t       inputLen;
+    linkedListElement_t *elt,  *head=0,  *tail=0;
+    linkedListElement_t *felt, *fhead=0, *ftail=0;
 
     assert(input != NULL);
     assert(bind_variables != NULL);
@@ -823,7 +822,7 @@ parse_bind_variables(char *input,
                 bp = bindbuf;
                 state = bind;
                 *fp = '\0';
-                felt = string_list_elt_new(ns_strdup(fragbuf));
+                felt = linkedListElement_new(ns_strdup(fragbuf));
                 if(ftail == NULL) {
                     fhead = ftail = felt;
                 } else {
@@ -850,7 +849,7 @@ parse_bind_variables(char *input,
                 fp = fragbuf;
             } else if (!(*p == '_' || *p == '$' || *p == '#' || CHARTYPE(alnum, *p) != 0)) {
                 *bp = '\0';
-                elt = string_list_elt_new(ns_strdup(bindbuf));
+                elt = linkedListElement_new(ns_strdup(bindbuf));
                 if (tail == NULL) {
                     head = tail = elt;
                 } else {
@@ -873,7 +872,7 @@ parse_bind_variables(char *input,
 
     if (state == bind) {
         *bp = '\0';
-        elt = string_list_elt_new(ns_strdup(bindbuf));
+        elt = linkedListElement_new(ns_strdup(bindbuf));
         if (tail == NULL) {
             head = elt;
             /*tail = elt;*/
@@ -883,7 +882,7 @@ parse_bind_variables(char *input,
         }
     } else {
         *fp = '\0';
-        felt = string_list_elt_new(ns_strdup(fragbuf));
+        felt = linkedListElement_new(ns_strdup(fragbuf));
         if (ftail == NULL) {
             fhead = felt;
 	    /*  ftail = felt; */
@@ -919,9 +918,9 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
     segment_pos = query + strlen(query);
 
     for (;;) {
-	char   *data_column;
-	int     i, j, n, byte_len;
-	char    buf[6001];
+	const char *data_column;
+	int         i, j, n, byte_len;
+	char        buf[6001];
 
 	sprintf(segment_pos, "%d", segment);
 	if (Ns_DbExec(handle, query) != NS_ROWS) {
@@ -958,7 +957,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
 
 
 static int
-blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id)
+blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
 {
     Connection *pconn = handle->connection;
     char        query[100];
@@ -995,8 +994,8 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id)
  */
 
 static int
-blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char* lob_id,
-		    int to_conn_p, char* filename)
+blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
+		    int to_conn_p, const char *filename)
 {
     Connection  *pconn = handle->connection;
     Ns_Conn     *conn = NULL;
@@ -1087,7 +1086,7 @@ stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, in
  */
 
 static int
-blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* value)
+blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const char *value)
 {
     int            i, j, segment, value_len;
     unsigned char  out_buf[8001], *value_ptr;
@@ -1133,7 +1132,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char* blob_id, char* val
  */
 
 static int
-blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, char *filename)
+blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const char *filename)
 {
     int           fd, i, j, segment, readlen;
     char          query[10000];
@@ -1186,7 +1185,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, char
 /*
  *----------------------------------------------------------------------
  *
- * string_list_elt_new --
+ * linkedListElement_new --
  *
  *      Allocate memory for a new string list element which points to
  *      the given string.
@@ -1200,14 +1199,14 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, char
  *----------------------------------------------------------------------
  */
 
-static string_list_elt_t *
-string_list_elt_new(char *string)
+static linkedListElement_t *
+linkedListElement_new(const char *string)
 {
-    string_list_elt_t *elt;
+    linkedListElement_t *elt;
 
     assert(string != NULL);
 
-    elt = ns_malloc(sizeof(string_list_elt_t));
+    elt = ns_malloc(sizeof(linkedListElement_t));
     elt->string = string;
     elt->next = NULL;
 
@@ -1218,7 +1217,7 @@ string_list_elt_new(char *string)
 /*
  *----------------------------------------------------------------------
  *
- * string_list_len --
+ * LinkedList_len --
  *
  *      Count the elements in a string list.
  *
@@ -1232,7 +1231,7 @@ string_list_elt_new(char *string)
  */
 
 static int
-string_list_len(const string_list_elt_t *head)
+LinkedList_len(const linkedListElement_t *head)
 {
     int n;
 
@@ -1246,7 +1245,7 @@ string_list_len(const string_list_elt_t *head)
 /*
  *----------------------------------------------------------------------
  *
- * string_list_free_list --
+ * LinkedList_free_list --
  *
  *      Free the given list and the strings it contains.
  *
@@ -1260,12 +1259,12 @@ string_list_len(const string_list_elt_t *head)
  */
 
 static void
-string_list_free_list (string_list_elt_t *head)
+LinkedList_free_list (linkedListElement_t *head)
 {
-    string_list_elt_t *elt;
+    linkedListElement_t *elt;
 
     while (head != NULL) {
-        ns_free(head->string);
+        ns_free((char *)head->string);
         elt = head->next;
         ns_free(head);
         head = elt;
