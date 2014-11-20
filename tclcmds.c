@@ -160,7 +160,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
 {
     Ns_DbHandle    *handle;
     Connection     *pconn;
-    int            subcmd, result;
+    int             subcmd, result;
 
     static const char *subcmds[] = {
 	"blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file", 
@@ -173,11 +173,16 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
 	DbIdx, HostIdx, OptionsIdx, PortIdx, NumberIdx, ErrorIdx, StatusIdx, NtuplesIdx
     };
 
+    if (argc < 3) {
+        Tcl_WrongNumArgs(interp, 1, argv, "subcmd handle ?args?");
+        return TCL_ERROR;
+    }
 
     if (Ns_TclDbGetHandle(interp, Tcl_GetString(argv[2]), &handle) != TCL_OK) {
         return TCL_ERROR;
     }
 
+    assert(handle != NULL);
     pconn = handle->connection;
 
     /*
@@ -186,8 +191,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
      */
 
     if (Ns_DbDriverName(handle) != pgDbName) {
-        Tcl_AppendResult(interp, "handle \"", Tcl_GetString(argv[1]), "\" is not of type \"",
-                         pgDbName, "\"", NULL);
+        Ns_TclPrintfResult(interp, "handle '%s' is not of type '%s'", Tcl_GetString(argv[1]), pgDbName);
         return TCL_ERROR;
     }
 
@@ -199,104 +203,139 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
     switch (subcmd) {
 
     case BlobWriteIdx: 
-	if (argc != 4) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                             Tcl_GetString(argv[0]), " command dbId blobId\"", NULL);
-            return TCL_ERROR;
+        if (argc == 4) {
+            result = blob_send_to_stream(interp, handle, Tcl_GetString(argv[3]), NS_TRUE, NULL);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle blobId");
+            result = TCL_ERROR;
         }
-        return blob_send_to_stream(interp, handle, Tcl_GetString(argv[3]), NS_TRUE, NULL);
+        break;
 
     case BlobGetIdx: 
-        if (argc != 4) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                             Tcl_GetString(argv[0]), " command dbId blobId\"", NULL);
-            return TCL_ERROR;
+        if (argc == 4) {
+            result = blob_get(interp, handle, Tcl_GetString(argv[3]));
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle blobId");
+            result = TCL_ERROR;
         }
-        return blob_get(interp, handle, Tcl_GetString(argv[3]));
+        break;
 
     case BlobPutIdx: 
-        if (argc != 5) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                             Tcl_GetString(argv[0]), " command dbId blobId value\"", NULL);
-            return TCL_ERROR;
+        if (argc == 5) {
+            if (pconn->in_transaction == 0) {
+                Ns_TclPrintfResult(interp, "blob_put only allowed in transaction");
+                result = TCL_ERROR;
+            } else {
+                result = blob_put(interp, handle, Tcl_GetString(argv[3]), Tcl_GetString(argv[4]));
+            }
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle blobId value");
+            result = TCL_ERROR;
         }
-        if (pconn->in_transaction == 0) {
-            Tcl_AppendResult(interp,
-                             "blob_put only allowed in transaction", NULL);
-            return TCL_ERROR;
-        }
-        return blob_put(interp, handle, Tcl_GetString(argv[3]), Tcl_GetString(argv[4]));
+        break;
 
     case BlobDmlFileIdx:
-        if (argc != 5) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                             Tcl_GetString(argv[0]), " command dbId blobId filename\"", NULL);
-            return TCL_ERROR;
+        if (argc == 5) {
+            if (pconn->in_transaction == 0) {
+                Ns_TclPrintfResult(interp, "blob_dml_file only allowed in transaction");
+                result = TCL_ERROR;
+            } else {
+                result = blob_dml_file(interp, handle, Tcl_GetString(argv[3]), Tcl_GetString(argv[4]));
+            }
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle blobId filename");
+            result = TCL_ERROR;
         }
-        if (pconn->in_transaction == 0) {
-            Tcl_AppendResult(interp,
-                             "blob_dml_file only allowed in transaction", NULL);
-            return TCL_ERROR;
-        }
-        return blob_dml_file(interp, handle, Tcl_GetString(argv[3]), Tcl_GetString(argv[4]));
-
+        break;
 
     case BlobSelectFileIdx:
-        if (argc != 5) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                             Tcl_GetString(argv[0]), " command dbId blobId filename\"", NULL);
-            return TCL_ERROR;
+        if (argc == 5) {
+            result = blob_send_to_stream(interp, handle, Tcl_GetString(argv[3]), NS_FALSE, Tcl_GetString(argv[4]));
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle blobId filename");
+            result = TCL_ERROR;
         }
-        return blob_send_to_stream(interp, handle, Tcl_GetString(argv[3]), NS_FALSE, Tcl_GetString(argv[4]));
+        break;
 
     case DbIdx:
-	if (argc != 3) break;
-        Tcl_SetResult(interp, PQdb(pconn->pgconn), TCL_STATIC);
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetResult(interp, PQdb(pconn->pgconn), TCL_STATIC);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     case HostIdx: 
-	if (argc != 3) break;
-        Tcl_SetResult(interp, PQhost(pconn->pgconn), TCL_STATIC);
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetResult(interp, PQhost(pconn->pgconn), TCL_STATIC);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     case OptionsIdx:
-	if (argc != 3) break;
-        Tcl_SetResult(interp, PQoptions(pconn->pgconn), TCL_STATIC);
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetResult(interp, PQoptions(pconn->pgconn), TCL_STATIC);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     case PortIdx:
-	if (argc != 3) break;
-        Tcl_SetResult(interp, PQport(pconn->pgconn), TCL_STATIC);
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetResult(interp, PQport(pconn->pgconn), TCL_STATIC);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     case NumberIdx:
-	if (argc != 3) break;
-        Tcl_SetObjResult(interp, Tcl_NewIntObj((int)pconn->id));
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetObjResult(interp, Tcl_NewIntObj((int)pconn->id));
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
     
     case ErrorIdx:
-	if (argc != 3) break;
-        Tcl_SetResult(interp, PQerrorMessage(pconn->pgconn), TCL_STATIC);
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetResult(interp, PQerrorMessage(pconn->pgconn), TCL_STATIC);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     case StatusIdx:
-	if (argc != 3) break;
-	Tcl_SetResult(interp, PQstatus(pconn->pgconn) == CONNECTION_OK ? "ok" : "bad", TCL_STATIC);
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetResult(interp, PQstatus(pconn->pgconn) == CONNECTION_OK ? "ok" : "bad", TCL_STATIC);
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     case NtuplesIdx:
-	if (argc != 3) break;
-        Tcl_SetObjResult(interp, Tcl_NewIntObj(pconn->nTuples));
-	return TCL_OK;
+        if (argc == 3) {
+            Tcl_SetObjResult(interp, Tcl_NewIntObj(pconn->nTuples));
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+	break;
 
     default:
 	/* should not happen */
 	assert(subcmd && 0);
+        break;
     }
 
-    Tcl_AppendResult(interp, "wrong # args: should be \"",
-		     Tcl_GetString(argv[0]), " command dbId\"", NULL);
-    return TCL_ERROR;
+    return result;
 }
 
 
@@ -939,11 +978,11 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
 	   nbytes += byte_len;
 	*/
 	n = byte_len;
-	for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
+	for (i = 0, j = 0; n > 0; i += 4, j += 3, n -= 3) {
 	    decode3((unsigned char*)&data_column[i], &buf[j], n);
 	}
 
-	if (fd > 0 || conn != NULL) {
+	if (fd != NS_INVALID_FD || conn != NULL) {
 	    (void) stream_actually_write(fd, conn, buf, (size_t)byte_len, (conn != NULL) ? 1 : 0);
 	} else {
 	    buf[byte_len] = '\0';
@@ -1064,13 +1103,13 @@ stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, in
     ssize_t bytes_written = 0;
 
     assert(bufp != NULL);
-    assert(fd > -1 || conn != NULL);
+    assert(fd != NS_INVALID_FD || conn != NULL);
 
     if (to_conn_p != 0) {
         size_t n = Ns_ConnContentSent(conn);
 
         if (Ns_ConnWriteData(conn, bufp, length, 0U) == NS_OK) {
-            bytes_written = (ssize_t)(Ns_ConnContentSent(conn) - n);
+            bytes_written = (ssize_t)Ns_ConnContentSent(conn) - (ssize_t)n;
         } else {
             bytes_written = 0;
         }
@@ -1146,7 +1185,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
 
     fd = open (filename, O_RDONLY);
 
-    if (fd == -1) {
+    if (fd == NS_INVALID_FD) {
         Ns_Log (Error, " Error opening file %s: %d(%s)",
                 filename, errno, strerror(errno));
         Tcl_AppendResult (interp, "can't open file ", filename,
