@@ -43,7 +43,7 @@
 
 typedef struct linkedListElement_t {
     struct linkedListElement_t *next;
-    const char                 *string;
+    const char                 *chars;
 } linkedListElement_t;
 
 
@@ -61,7 +61,7 @@ static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, cons
 static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
-static linkedListElement_t *linkedListElement_new(const char *string)
+static linkedListElement_t *linkedListElement_new(const char *chars)
     NS_GNUC_NONNULL(1)
     NS_GNUC_RETURNS_NONNULL;
 
@@ -87,7 +87,7 @@ static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id
 static int blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const char *filename)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
 
-static ssize_t stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_conn_p)
+static ssize_t write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_conn_p)
     NS_GNUC_NONNULL(3);
 
 static unsigned char enc_one(unsigned char c);
@@ -483,9 +483,8 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     ParsedSQL         *parsedSQLptr;
     Ns_DbHandle       *handle;
     Ns_Set            *rowPtr, *set = NULL;
-    char              *sql;
-    const char        *cmd, *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
-    const char        *value = NULL, *p;
+    const char        *sql, *cmd, *p, *value = NULL;
+    const char        *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
     int                result, subcmd, nrFragments;
     int                haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
 
@@ -582,18 +581,18 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
              var_p != NULL || frag_p != NULL;) {
 
             if (frag_p != NULL) {
-                Ns_DStringAppend(dsPtr, frag_p->string);
+                Ns_DStringAppend(dsPtr, frag_p->chars);
                 frag_p = frag_p->next;
             }
 
             if (var_p != NULL) {
                 if (set == NULL) {
-                    value = Tcl_GetVar(interp, var_p->string, 0);
+                    value = Tcl_GetVar(interp, var_p->chars, 0);
                 } else {
-                    value = Ns_SetGet(set, var_p->string);
+                    value = Ns_SetGet(set, var_p->chars);
                 }
                 if (value == NULL) {
-                    Tcl_AppendResult (interp, "undefined variable `", var_p->string,
+                    Tcl_AppendResult (interp, "undefined variable `", var_p->chars,
                                       "'", NULL);
                     if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
                     return TCL_ERROR;
@@ -959,7 +958,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
     for (;;) {
 	const char *data_column;
 	int         i, j, n, byte_len;
-	char        buf[6001];
+	char        buf[6001] = "";
 
 	sprintf(segment_pos, "%d", segment);
 	if (Ns_DbExec(handle, query) != NS_ROWS) {
@@ -983,7 +982,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
 	}
 
 	if (fd != NS_INVALID_FD || conn != NULL) {
-	    (void) stream_actually_write(fd, conn, buf, (size_t)byte_len, (conn != NULL) ? 1 : 0);
+	    (void) write_to_stream(fd, conn, buf, (size_t)byte_len, (conn != NULL) ? 1 : 0);
 	} else {
 	    buf[byte_len] = '\0';
 	    Tcl_AppendResult(interp, buf, NULL);
@@ -1062,7 +1061,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
             return TCL_ERROR;
         }
 
-        fd = open (filename, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+        fd = ns_open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0600);
 
         if (fd < 0) {
             Ns_Log (Error, "Can't open %s for writing. error %d(%s)",
@@ -1082,7 +1081,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
 
  bailout:
     if (to_conn_p == 0) {
-        close (fd);
+        ns_close(fd);
     }
 
     PQclear(pconn->res);
@@ -1098,7 +1097,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
  * Lifted from Oracle driver.
  */
 static ssize_t
-stream_actually_write(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_conn_p)
+write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_conn_p)
 {
     ssize_t bytes_written = 0;
 
@@ -1183,7 +1182,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
     assert(blob_id != NULL);
     assert(filename != NULL);
 
-    fd = open (filename, O_RDONLY);
+    fd = ns_open(filename, O_RDONLY);
 
     if (fd == NS_INVALID_FD) {
         Ns_Log (Error, " Error opening file %s: %d(%s)",
@@ -1199,7 +1198,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
     segment_pos = query + strlen(query);
     segment = 1;
 
-    readlen = read(fd, in_buf, 6000U);
+    readlen = ns_read(fd, in_buf, 6000U);
     while (readlen > 0) {
         for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
 	    encode3(&in_buf[i], &out_buf[j]);
@@ -1208,13 +1207,13 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
         sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
         if (Ns_DbExec(handle, query) != NS_DML) {
             Tcl_AppendResult(interp, "Error inserting data into BLOB", NULL);
-            close(fd);
+            ns_close(fd);
             return TCL_ERROR;
         }
-        readlen = read(fd, in_buf, 6000U);
+        readlen = ns_read(fd, in_buf, 6000U);
         segment++;
     }
-    close(fd);
+    ns_close(fd);
 
     return TCL_OK;
 }
@@ -1239,14 +1238,14 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
  */
 
 static linkedListElement_t *
-linkedListElement_new(const char *string)
+linkedListElement_new(const char *chars)
 {
     linkedListElement_t *elt;
 
-    assert(string != NULL);
+    assert(chars != NULL);
 
     elt = ns_malloc(sizeof(linkedListElement_t));
-    elt->string = string;
+    elt->chars = chars;
     elt->next = NULL;
 
     return elt;
@@ -1303,7 +1302,7 @@ LinkedList_free_list (linkedListElement_t *head)
     linkedListElement_t *elt;
 
     while (head != NULL) {
-        ns_free((char *)head->string);
+        ns_free((char *)head->chars);
         elt = head->next;
         ns_free(head);
         head = elt;
@@ -1311,27 +1310,25 @@ LinkedList_free_list (linkedListElement_t *head)
 }
 
 /*
- * This is a slight modification of the encoding scheme used by
- * uuencode.  It's quite efficient, using four bytes for each
- * three bytes in the input stream.   There's a slight hitch in
- * that apostrophe isn't legal in Postgres strings.
- * The uuencoding algorithm doesn't make use of lower case letters,
+ * encode3() is a slight modification of the encoding scheme used by uuencode.
+ * It's quite efficient, using four bytes for each three bytes in the input
+ * stream.  There's a slight hitch in that apostrophe isn't legal in Postgres
+ * strings.  The uuencoding algorithm doesn't make use of lower case letters,
  * though, so we just map them to 'a'.
  *
- * This is a real hack, that's for sure, but we do want to be
- * able to pg_dump these, and this simple means of encoding
- * accomplishes that and is fast, besides.  And at some point
- * we'll be able to stuff large objects directly into Postgres
- * anyway.
+ * This is a real hack, that's for sure, but we do want to be able to pg_dump
+ * these, and this simple means of encoding accomplishes that and is fast,
+ * besides.  And at some point we'll be able to stuff large objects directly
+ * into Postgres anyway.
  */
 
 /* ENC is the basic 1-character encoding function to make a char printing */
-#define ENC(c) (((unsigned char)(c) & 0x3FU) + (unsigned char)' ')
+/*#define ENC(c) (((unsigned char)(c) & 0x3FU) + (unsigned char)' ')*/
 
 static unsigned char
 enc_one(unsigned char c)
 {
-    c = ENC(c);
+    c = (c & 0x3FU) + UCHAR(' ');
     if (c == UCHAR('\'')) {
 	c = UCHAR('a');
     } else if (c == UCHAR('\\')) {

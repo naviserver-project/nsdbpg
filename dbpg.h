@@ -56,7 +56,7 @@ typedef struct Connection {
     int             in_transaction;
 } Connection;
 
-extern char *pgDbName;
+extern const char *pgDbName;
 extern int Ns_PgServerInit(const char *server, char *module, char *driver);
 
 

@@ -37,17 +37,17 @@
 #include "dbpg.h"
 
 NS_EXPORT const int Ns_ModuleVersion = 1;
-char *pgDbName = "PostgreSQL";
+const char *pgDbName = "PostgreSQL";
 
 /*
  * Local functions defined in this file.
  */
 
-static char   *DbType(Ns_DbHandle *handle);
+static const char *DbType(Ns_DbHandle *handle);
 static int     OpenDb(Ns_DbHandle *handle);
 static int     CloseDb(Ns_DbHandle *handle);
 static Ns_Set *BindRow(Ns_DbHandle *handle);
-static int     Exec(Ns_DbHandle *handle, char *sql);
+static int     Exec(Ns_DbHandle *handle, const char *sql);
 static int     GetRow(const Ns_DbHandle *handle, const Ns_Set *row);
 static int     GetRowCount(const Ns_DbHandle *handle);
 static int     Flush(const Ns_DbHandle *handle);
@@ -97,7 +97,7 @@ static unsigned int id = 0;     /* Global count of connections. */
  */
 
 NS_EXPORT int
-Ns_DbDriverInit(char *driver, const char *configPath)
+Ns_DbDriverInit(const char *driver, const char *configPath)
 {
     const char *style;
     Ns_DString  ds;
@@ -143,7 +143,7 @@ Ns_DbDriverInit(char *driver, const char *configPath)
  *----------------------------------------------------------------------
  */
 
-static char *
+static const char *
 DbType(Ns_DbHandle *UNUSED(handle))
 {
     return pgDbName;
@@ -337,7 +337,7 @@ BindRow(Ns_DbHandle *handle)
  */
 
 static int
-Exec(Ns_DbHandle *handle, char *sql)
+Exec(Ns_DbHandle *handle, const char *sql)
 {
     Connection  *pconn;
     Ns_DString   dsSql;
