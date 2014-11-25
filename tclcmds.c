@@ -55,8 +55,8 @@ static Tcl_ObjCmdProc PgObjCmd;
 static Tcl_ObjCmdProc PgBindObjCmd;
 static Ns_TclTraceProc AddCmds;
 
-static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql, Ns_DString *dsPtr)
-    NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4) NS_GNUC_NONNULL(5);
+static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql)
+    NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
 
 static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
@@ -662,19 +662,21 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 	sql = Ns_DStringValue(dsPtr);
     }
 
+    result = TCL_OK;
     switch (subcmd) {
     case DmlIdx:
         if (Ns_DbDML(handle, sql) != NS_OK) {
-            return DbFail(interp, handle, cmd, sql, dsPtr);
+            result = DbFail(interp, handle, cmd, sql);
         }
 	break;
 
     case OneRowIdx:
         rowPtr = Ns_Db1Row(handle, sql);
         if (rowPtr == NULL) {
-            return DbFail(interp, handle, cmd, sql, dsPtr);
+            result = DbFail(interp, handle, cmd, sql);
+        } else {
+            (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
         }
-        (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
 	break;
 
     case ZeroOrOneRowIdx:
@@ -683,22 +685,24 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
 	    rowPtr = Ns_Db0or1Row(handle, sql, &nrows);
 	    if (rowPtr == NULL) {
-		return DbFail(interp, handle, cmd, sql, dsPtr);
-	    }
-	    if (nrows == 0) {
-		Ns_SetFree(rowPtr);
+		result = DbFail(interp, handle, cmd, sql);
 	    } else {
-		(void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
-	    }
+                if (nrows == 0) {
+                    Ns_SetFree(rowPtr);
+                } else {
+                    (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
+                }
+            }
 	}
 	break;
 
     case SelectIdx:
         rowPtr = Ns_DbSelect(handle, sql);
         if (rowPtr == NULL) {
-            return DbFail(interp, handle, cmd, sql, dsPtr);
+            result = DbFail(interp, handle, cmd, sql);
+        } else {
+            (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_STATIC);
         }
-        (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_STATIC);
 	break;
 
     case ExecIdx:
@@ -710,18 +714,20 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
             Tcl_SetResult(interp, "NS_ROWS", TCL_STATIC);
             break;
         default:
-            return DbFail(interp, handle, cmd, sql, dsPtr);
+            result = DbFail(interp, handle, cmd, sql);
         }
 	break;
 
     default:
 	/* should not happen */
 	assert(subcmd && 0);
+        break;
     }
 
-    if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
-
-    return TCL_OK;
+    if (dsPtr != NULL) {
+        Ns_DStringFree(dsPtr);
+    }
+    return result;
 }
 
 
@@ -743,7 +749,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
  */
 
 static int
-DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql, Ns_DString *dsPtr)
+DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql)
 {
     Connection *pconn = handle->connection;
     const char *pqerror;
@@ -752,7 +758,6 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     assert(handle != NULL);
     assert(cmd != NULL);
     assert(sql != NULL);
-    assert(dsPtr != NULL);
 
     Tcl_AppendResult(interp, "Database operation \"", cmd, "\" failed", NULL);
     if (handle->cExceptionCode[0] != '\0') {
@@ -772,8 +777,6 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
         Tcl_AppendResult(interp, "\n", NULL);
     }
     Tcl_AppendResult(interp, "\nSQL: ", sql, NULL);
-
-    if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
 
     return TCL_ERROR;
 }
