@@ -76,7 +76,7 @@ static const Ns_DbProc procs[] = {
     {DbFn_End, NULL}
 };
 
-static char *dateStyle = NULL;
+static const char *dateStyle = NULL;
 static unsigned int id = 0;     /* Global count of connections. */
 
 

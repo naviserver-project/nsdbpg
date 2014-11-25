@@ -130,7 +130,7 @@ Ns_PgServerInit(const char *server, char *UNUSED(module), char *UNUSED(driver))
 }
 
 static int
-AddCmds(Tcl_Interp *interp, void *UNUSED(arg))
+AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
     Tcl_CreateObjCommand(interp, "ns_pg",   PgObjCmd,  NULL, NULL);
     Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
@@ -978,7 +978,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
 	*/
 	n = byte_len;
 	for (i = 0, j = 0; n > 0; i += 4, j += 3, n -= 3) {
-	    decode3((unsigned char*)&data_column[i], &buf[j], n);
+	    decode3((const unsigned char*)&data_column[i], &buf[j], n);
 	}
 
 	if (fd != NS_INVALID_FD || conn != NULL) {
@@ -1127,7 +1127,8 @@ static int
 blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const char *value)
 {
     int            i, j, segment, value_len;
-    unsigned char  out_buf[8001], *value_ptr;
+    unsigned char  out_buf[8001];
+    const unsigned char  *value_ptr;
     char           query[10000];
     char          *segment_pos;
 
@@ -1137,7 +1138,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const cha
     assert(value != NULL);
 
     value_len = (int)strlen(value);
-    value_ptr = (unsigned char*)value;
+    value_ptr = (const unsigned char*)value;
 
     strcpy(query, "INSERT INTO LOB_DATA VALUES(");
     strcat(query, blob_id);
