@@ -855,7 +855,7 @@ parse_bind_variables(const char *input,
 
         switch (state) {
         case base:
-            if (*p == '\'') {
+            if (unlikely(*p == '\'')) {
                 state = instr;
                 current_string_length = 0;
                 *fp++ = *p;
@@ -876,7 +876,7 @@ parse_bind_variables(const char *input,
             break;
 
         case instr:
-            if (*p == '\'' && (lastchar != '\'' || current_string_length == 0)) {
+            if ((unlikely(*p == '\'')) && (lastchar != '\'' || current_string_length == 0)) {
                 state = base;
             }
             current_string_length++;
@@ -884,7 +884,7 @@ parse_bind_variables(const char *input,
             break;
 
         case bind:
-            if (*p == '=') {
+            if (unlikely(*p == '=')) {
                 state = base;
                 bp = bindbuf;
                 fp = fragbuf;
@@ -1084,7 +1084,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
 
  bailout:
     if (to_conn_p == 0) {
-        ns_close(fd);
+        (void) ns_close(fd);
     }
 
     PQclear(pconn->res);
@@ -1211,13 +1211,13 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
         sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
         if (Ns_DbExec(handle, query) != NS_DML) {
             Tcl_AppendResult(interp, "Error inserting data into BLOB", NULL);
-            ns_close(fd);
+            (void) ns_close(fd);
             return TCL_ERROR;
         }
         readlen = ns_read(fd, in_buf, 6000U);
         segment++;
     }
-    ns_close(fd);
+    (void) ns_close(fd);
 
     return TCL_OK;
 }

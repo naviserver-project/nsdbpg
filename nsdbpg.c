@@ -255,10 +255,9 @@ CloseDb(Ns_DbHandle *handle) {
 
     pconn = handle->connection;
 
-    if (handle->verbose == NS_TRUE) {
-        Ns_Log(Notice, "nsdbpg(%s):  Closing connection: %u",
-               handle->driver, pconn->id);
-    }
+    Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s):  Closing connection: %u",
+	   handle->driver, pconn->id);
+
     PQfinish(pconn->pgconn);
     ns_free(pconn);
     handle->connection = NULL;
@@ -365,9 +364,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
         Ns_DStringAppend(&dsSql, ";");
     }
-    if (handle->verbose == NS_TRUE) {
-        Ns_Log(Notice, "nsdbpg: Querying '%s'", dsSql.string);
-    }
+    Ns_Log(Ns_LogSqlDebug, "nsdbpg: Querying '%s'", dsSql.string);
 
     pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
@@ -636,9 +633,7 @@ ResetHandle(Ns_DbHandle *handle)
     pconn = handle->connection;
 
     if (pconn->in_transaction == NS_TRUE) {
-        if (handle->verbose == NS_TRUE) {
-            Ns_Log(Warning, "nsdbpg: Rolling back transaction.");
-        }
+      Ns_Log(Ns_LogSqlDebug, "nsdbpg: Rolling back transaction.");
         if (Ns_DbExec(handle, "rollback") != (int)PGRES_COMMAND_OK) {
             Ns_Log(Error, "nsdbpg: Rollback failed.");
         }
@@ -677,20 +672,26 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
     }
     if (strncasecmp(sql, "begin", 5) == 0) {
         pconn->in_transaction = NS_TRUE;
-        if (handle->verbose == NS_TRUE) {
-            Ns_Log(Notice, "nsdbpg: Entering transaction.");
-        }
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg: Entering transaction.");
+
     } else if (strncasecmp(sql, "end", 3) == 0
                || strncasecmp(sql, "commit", 6) == 0) {
         pconn->in_transaction = NS_FALSE;
-        if (handle->verbose == NS_TRUE) {
-            Ns_Log(Notice, "nsdbpg: Committing transaction.");
-        }
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg: Committing transaction.");
+
     } else if (strncasecmp(sql, "abort", 5) == 0
                || strncasecmp(sql, "rollback", 8) == 0) {
         pconn->in_transaction = NS_FALSE;
-        if (handle->verbose == NS_TRUE) {
-            Ns_Log(Notice, "nsdbpg: Rolling back transaction.");
-        }
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg: Rolling back transaction.");
     }
 }
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * indent-tabs-mode: nil
+ * End:
+ */
+
