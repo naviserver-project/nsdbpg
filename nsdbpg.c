@@ -77,7 +77,7 @@ static const Ns_DbProc procs[] = {
 };
 
 static const char *dateStyle = NULL;
-static unsigned int id = 0;     /* Global count of connections. */
+static unsigned int id = 0u;     /* Global count of connections. */
 
 
 /*
@@ -527,8 +527,8 @@ GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
         pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
         return NS_END_DATA;
     }
-    for (i = 0U; i < (size_t)pconn->nCols; i++) {
-        Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, i));
+    for (i = 0u; i < (size_t)pconn->nCols; i++) {
+        Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, (int)i));
     }
     pconn->curTuple++;
 
@@ -670,17 +670,17 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
     while (*sql == ' ') {
         sql++;
     }
-    if (strncasecmp(sql, "begin", 5) == 0) {
+    if (strncasecmp(sql, "begin", 5u) == 0) {
         pconn->in_transaction = NS_TRUE;
         Ns_Log(Ns_LogSqlDebug, "nsdbpg: Entering transaction.");
 
-    } else if (strncasecmp(sql, "end", 3) == 0
-               || strncasecmp(sql, "commit", 6) == 0) {
+    } else if (strncasecmp(sql, "end", 3u) == 0
+               || strncasecmp(sql, "commit", 6u) == 0) {
         pconn->in_transaction = NS_FALSE;
         Ns_Log(Ns_LogSqlDebug, "nsdbpg: Committing transaction.");
 
-    } else if (strncasecmp(sql, "abort", 5) == 0
-               || strncasecmp(sql, "rollback", 8) == 0) {
+    } else if (strncasecmp(sql, "abort", 5u) == 0
+               || strncasecmp(sql, "rollback", 8u) == 0) {
         pconn->in_transaction = NS_FALSE;
         Ns_Log(Ns_LogSqlDebug, "nsdbpg: Rolling back transaction.");
     }

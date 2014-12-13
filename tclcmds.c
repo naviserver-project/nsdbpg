@@ -598,7 +598,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                     return TCL_ERROR;
                 }
 
-                if ( strlen(value) == 0U ) {
+                if ( strlen(value) == 0u ) {
                     /*
                      * DRB: If the Tcl variable contains the empty string, pass a NULL
                      * as the value.
@@ -1110,7 +1110,7 @@ write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_c
     if (to_conn_p != 0) {
         size_t n = Ns_ConnContentSent(conn);
 
-        if (Ns_ConnWriteData(conn, bufp, length, 0U) == NS_OK) {
+        if (Ns_ConnWriteData(conn, bufp, length, 0u) == NS_OK) {
             bytes_written = (ssize_t)Ns_ConnContentSent(conn) - (ssize_t)n;
         } else {
             bytes_written = 0;
@@ -1186,7 +1186,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
     assert(blob_id != NULL);
     assert(filename != NULL);
 
-    fd = ns_open(filename, O_RDONLY);
+    fd = ns_open(filename, O_RDONLY, 0);
 
     if (fd == NS_INVALID_FD) {
         Ns_Log (Error, " Error opening file %s: %d(%s)",
@@ -1202,7 +1202,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
     segment_pos = query + strlen(query);
     segment = 1;
 
-    readlen = ns_read(fd, in_buf, 6000U);
+    readlen = ns_read(fd, in_buf, 6000u);
     while (readlen > 0) {
         for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
 	    encode3(&in_buf[i], &out_buf[j]);
@@ -1214,7 +1214,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
             (void) ns_close(fd);
             return TCL_ERROR;
         }
-        readlen = ns_read(fd, in_buf, 6000U);
+        readlen = ns_read(fd, in_buf, 6000u);
         segment++;
     }
     (void) ns_close(fd);
@@ -1327,12 +1327,12 @@ LinkedList_free_list (linkedListElement_t *head)
  */
 
 /* ENC is the basic 1-character encoding function to make a char printing */
-/*#define ENC(c) (((unsigned char)(c) & 0x3FU) + (unsigned char)' ')*/
+/*#define ENC(c) (((unsigned char)(c) & 0x3Fu) + (unsigned char)' ')*/
 
 static unsigned char
 enc_one(unsigned char c)
 {
-    c = (c & 0x3FU) + UCHAR(' ');
+    c = (c & 0x3Fu) + UCHAR(' ');
     if (c == UCHAR('\'')) {
 	c = UCHAR('a');
     } else if (c == UCHAR('\\')) {
@@ -1345,14 +1345,14 @@ static void
 encode3(const unsigned char *p, unsigned char *buf)
 {
     *buf++ = enc_one(*p >> 2);
-    *buf++ = enc_one(((*p << 4)   & 0x30U) | ((p[1] >> 4) & 0x0FU));
-    *buf++ = enc_one(((p[1] << 2) & 0x3CU) | ((p[2] >> 6) & 0x03U));
-    *buf++ = enc_one(p[2] & 0x3FU);
+    *buf++ = enc_one(((*p << 4)   & 0x30u) | ((p[1] >> 4) & 0x0Fu));
+    *buf++ = enc_one(((p[1] << 2) & 0x3Cu) | ((p[2] >> 6) & 0x03u));
+    *buf++ = enc_one(p[2] & 0x3Fu);
 }
 
 
 /* single-character decode */
-#define DEC(c)  (((c) - UCHAR(' ')) & 0x3FU)
+#define DEC(c)  (((c) - UCHAR(' ')) & 0x3Fu)
 
 static unsigned char
 get_one(unsigned char c)
