@@ -119,8 +119,11 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
         } else {
             Ns_Log(Error, "nsdbpg: Illegal value for datestyle: %s", style);
         }
-    } else if ((style = getenv("PGDATESTYLE")) != NULL) {
-        Ns_Log(Notice, "nsdbpg: PGDATESTYLE in effect: %s", style);
+    } else {
+        style = getenv("PGDATESTYLE");
+        if (style != NULL) {
+            Ns_Log(Notice, "nsdbpg: PGDATESTYLE in effect: %s", style);
+        }
     }
 
     return NS_OK;
@@ -184,11 +187,14 @@ OpenDb(Ns_DbHandle *handle)
     Ns_DStringAppend(&ds, handle->datasource);
     host = ds.string;
     port = strchr(host, ':');
-    if (port == NULL || ((db = strchr(port + 1, ':')) == NULL)) {
-        Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
-               "Should be host:port:database.",
-               handle->driver, handle->datasource);
-        return NS_ERROR;
+    if (port == NULL) {
+        db = strchr(port + 1, ':');
+        if (db == NULL) {
+            Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
+                   "Should be host:port:database.",
+                   handle->driver, handle->datasource);
+            return NS_ERROR;
+        }
     }
 
     *port++ = '\0';
