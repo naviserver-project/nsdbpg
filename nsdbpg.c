@@ -176,7 +176,7 @@ OpenDb(Ns_DbHandle *handle)
     Connection  *pconn;
     PGconn      *pgconn;
     Ns_DString   ds;
-    char        *host, *port, *db;
+    char        *host, *port, *db = NULL;
 
     if (handle == NULL || handle->datasource == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid handle.");
@@ -187,14 +187,14 @@ OpenDb(Ns_DbHandle *handle)
     Ns_DStringAppend(&ds, handle->datasource);
     host = ds.string;
     port = strchr(host, ':');
-    if (port == NULL) {
+    if (port != NULL) {
         db = strchr(port + 1, ':');
-        if (db == NULL) {
-            Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
-                   "Should be host:port:database.",
-                   handle->driver, handle->datasource);
-            return NS_ERROR;
-        }
+    }
+    if (db == NULL) {
+        Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
+               "Should be host:port:database.",
+               handle->driver, handle->datasource);
+        return NS_ERROR;
     }
 
     *port++ = '\0';
