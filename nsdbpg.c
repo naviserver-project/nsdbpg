@@ -100,7 +100,6 @@ NS_EXPORT int
 Ns_DbDriverInit(const char *driver, const char *configPath)
 {
     const char *style;
-    Ns_DString  ds;
 
     if (Ns_DbRegisterDriver(driver, &procs[0]) != NS_OK) {
         return NS_ERROR;
@@ -111,6 +110,7 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
         if (STRIEQ(style, "ISO") || STRIEQ(style, "SQL")
             || STRIEQ(style, "POSTGRES") || STRIEQ(style, "GERMAN")
             || STRIEQ(style, "NONEURO") || STRIEQ(style, "EURO")) {
+            Ns_DString  ds;
 
             Ns_DStringInit(&ds);
             Ns_DStringPrintf(&ds, "set datestyle to '%s'", style);
