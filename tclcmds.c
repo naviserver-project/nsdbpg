@@ -1345,8 +1345,8 @@ static void
 encode3(const unsigned char *p, unsigned char *buf)
 {
     *buf++ = enc_one(*p >> 2);
-    *buf++ = enc_one(((*p << 4)   & 0x30u) | ((p[1] >> 4) & 0x0Fu));
-    *buf++ = enc_one(((p[1] << 2) & 0x3Cu) | ((p[2] >> 6) & 0x03u));
+    *buf++ = enc_one((UCHAR(*p << 4)   & 0x30u) | ((p[1] >> 4) & 0x0Fu));
+    *buf++ = enc_one((UCHAR(p[1] << 2) & 0x3Cu) | ((p[2] >> 6) & 0x03u));
     *buf++ = enc_one(p[2] & 0x3Fu);
 }
 
@@ -1379,13 +1379,13 @@ decode3(const unsigned char *p, char *buf, int n)
     c4 = get_one(p[3]);
 
     if (n >= 1) {
-        *buf++ = DEC(c1) << 2 | DEC(c2) >> 4;
+        *buf++ = UCHAR(DEC(c1) << 2) | DEC(c2) >> 4;
     }
     if (n >= 2) {
-        *buf++ = DEC(c2) << 4 | DEC(c3) >> 2;
+        *buf++ = UCHAR(DEC(c2) << 4) | DEC(c3) >> 2;
     }
     if (n >= 3) {
-        *buf++ = DEC(c3) << 6 | DEC(c4);
+        *buf++ = UCHAR(DEC(c3) << 6) | DEC(c4);
     }
 }
 
