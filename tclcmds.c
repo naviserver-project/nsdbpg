@@ -1275,9 +1275,9 @@ linkedListElement_new(const char *chars)
 static int
 LinkedList_len(const linkedListElement_t *head)
 {
-    int n;
+    int n = 0;
 
-    for (n = 0; head != NULL; head = head->next) {
+    for (; head != NULL; head = head->next) {
         n++;
     }
     return n;
