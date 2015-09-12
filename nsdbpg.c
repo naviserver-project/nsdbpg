@@ -262,7 +262,7 @@ CloseDb(Ns_DbHandle *handle) {
     pconn = handle->connection;
 
     Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s):  Closing connection: %u",
-	   handle->driver, pconn->id);
+	   handle->poolname, pconn->id);
 
     PQfinish(pconn->pgconn);
     ns_free(pconn);
@@ -370,7 +370,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
         Ns_DStringAppend(&dsSql, ";");
     }
-    Ns_Log(Ns_LogSqlDebug, "nsdbpg: Querying '%s'", dsSql.string);
+    /*Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Querying '%s'", handle->poolname, dsSql.string);*/
 
     pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
@@ -639,7 +639,7 @@ ResetHandle(Ns_DbHandle *handle)
     pconn = handle->connection;
 
     if (pconn->in_transaction == NS_TRUE) {
-      Ns_Log(Ns_LogSqlDebug, "nsdbpg: Rolling back transaction.");
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
         if (Ns_DbExec(handle, "rollback") != (int)PGRES_COMMAND_OK) {
             Ns_Log(Error, "nsdbpg: Rollback failed.");
         }
@@ -678,17 +678,17 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
     }
     if (strncasecmp(sql, "begin", 5u) == 0) {
         pconn->in_transaction = NS_TRUE;
-        Ns_Log(Ns_LogSqlDebug, "nsdbpg: Entering transaction.");
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Entering transaction.", handle->poolname);
 
     } else if (strncasecmp(sql, "end", 3u) == 0
                || strncasecmp(sql, "commit", 6u) == 0) {
         pconn->in_transaction = NS_FALSE;
-        Ns_Log(Ns_LogSqlDebug, "nsdbpg: Committing transaction.");
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Committing transaction.", handle->poolname);
 
     } else if (strncasecmp(sql, "abort", 5u) == 0
                || strncasecmp(sql, "rollback", 8u) == 0) {
         pconn->in_transaction = NS_FALSE;
-        Ns_Log(Ns_LogSqlDebug, "nsdbpg: Rolling back transaction.");
+        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
     }
 }
 
