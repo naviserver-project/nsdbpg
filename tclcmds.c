@@ -754,10 +754,10 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     Connection *pconn = handle->connection;
     const char *pqerror;
 
-    assert(interp != NULL);
-    assert(handle != NULL);
-    assert(cmd != NULL);
-    assert(sql != NULL);
+    NS_NONNULL_ASSERT(interp != NULL);
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(cmd != NULL);
+    NS_NONNULL_ASSERT(sql != NULL);
 
     Tcl_AppendResult(interp, "Database operation \"", cmd, "\" failed", NULL);
     if (handle->cExceptionCode[0] != '\0') {
@@ -802,9 +802,7 @@ BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
 {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
 		     Tcl_GetString(argv[0]), " ", Tcl_GetString(argv[1]), NULL);
-    if (args != NULL) {
-        Tcl_AppendResult(interp, " ", args, NULL);
-    }
+    Tcl_AppendResult(interp, " ", args, NULL);
     Tcl_AppendResult(interp, "\"", NULL);
 
     return TCL_ERROR;
@@ -841,9 +839,9 @@ parse_bind_variables(const char *input,
     linkedListElement_t *elt,  *head=0,  *tail=0;
     linkedListElement_t *felt, *fhead=0, *ftail=0;
 
-    assert(input != NULL);
-    assert(bind_variables != NULL);
-    assert(fragments != NULL);
+    NS_NONNULL_ASSERT(input != NULL);
+    NS_NONNULL_ASSERT(bind_variables != NULL);
+    NS_NONNULL_ASSERT(fragments != NULL);
 
     inputLen = strlen(input);
     fragbuf = ns_malloc((inputLen + 1U) * sizeof(char));
@@ -851,7 +849,7 @@ parse_bind_variables(const char *input,
     bindbuf = ns_malloc((inputLen + 1U) * sizeof(char));
     bp = bindbuf;
 
-    for (p = input, state=base, lastchar='\0'; *p != '\0'; lastchar = *p, p++) {
+    for (p = input, state = base, lastchar = '\0'; *p != '\0'; lastchar = *p, p++) {
 
         switch (state) {
         case base:
@@ -952,9 +950,9 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
     char       *segment_pos;
     int         segment = 1;
 
-    assert(interp != NULL);
-    assert(handle != NULL);
-    assert(query != NULL);
+    NS_NONNULL_ASSERT(interp != NULL);
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(query != NULL);
 
     segment_pos = query + strlen(query);
 
@@ -1004,9 +1002,9 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
     char        query[100];
     int         result;
 
-    assert(interp != NULL);
-    assert(handle != NULL);
-    assert(lob_id != NULL);
+    NS_NONNULL_ASSERT(interp != NULL);
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(lob_id != NULL);
 
     strcpy(query, "SELECT BYTE_LEN, DATA FROM LOB_DATA WHERE LOB_ID = ");
     strcat(query, lob_id);
@@ -1043,9 +1041,9 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
     char         query[100];
     int          fd = -1, result = TCL_OK;
 
-    assert(interp != NULL);
-    assert(handle != NULL);
-    assert(lob_id != NULL);
+    NS_NONNULL_ASSERT(interp != NULL);
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(lob_id != NULL);
 
     if (to_conn_p != 0) {
         conn = Ns_TclGetConn(interp);
@@ -1104,7 +1102,7 @@ write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, int to_c
 {
     ssize_t bytes_written = 0;
 
-    assert(bufp != NULL);
+    NS_NONNULL_ASSERT(bufp != NULL);
     assert(fd != NS_INVALID_FD || conn != NULL);
 
     if (to_conn_p != 0) {
@@ -1135,10 +1133,10 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, const cha
     char           query[10000];
     char          *segment_pos;
 
-    assert(interp != NULL);
-    assert(handle != NULL);
-    assert(blob_id != NULL);
-    assert(value != NULL);
+    NS_NONNULL_ASSERT(interp != NULL);
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(blob_id != NULL);
+    NS_NONNULL_ASSERT(value != NULL);
 
     value_len = (int)strlen(value);
     value_ptr = (const unsigned char*)value;
@@ -1181,10 +1179,10 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
     unsigned char in_buf[6000], out_buf[8001];
     char         *segment_pos;
 
-    assert(interp != NULL);
-    assert(handle != NULL);
-    assert(blob_id != NULL);
-    assert(filename != NULL);
+    NS_NONNULL_ASSERT(interp != NULL);
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(blob_id != NULL);
+    NS_NONNULL_ASSERT(filename != NULL);
 
     fd = ns_open(filename, O_RDONLY, 0);
 
@@ -1246,7 +1244,7 @@ linkedListElement_new(const char *chars)
 {
     linkedListElement_t *elt;
 
-    assert(chars != NULL);
+    NS_NONNULL_ASSERT(chars != NULL);
 
     elt = ns_malloc(sizeof(linkedListElement_t));
     elt->chars = chars;
@@ -1352,7 +1350,7 @@ encode3(const unsigned char *p, unsigned char *buf)
 
 
 /* single-character decode */
-#define DEC(c)  (((c) - UCHAR(' ')) & 0x3Fu)
+#define DEC(c)  ((UCHAR(c) - UCHAR(' ')) & 0x3Fu)
 
 static unsigned char
 get_one(unsigned char c)
@@ -1370,8 +1368,8 @@ decode3(const unsigned char *p, char *buf, int n)
 {
     unsigned char c1, c2, c3, c4;
 
-    assert(p != NULL);
-    assert(buf != NULL);
+    NS_NONNULL_ASSERT(p != NULL);
+    NS_NONNULL_ASSERT(buf != NULL);
 
     c1 = get_one(p[0]);
     c2 = get_one(p[1]);
