@@ -126,6 +126,12 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
         }
     }
 
+    /*
+     * PQlibVersion() was introduced in pg 9.1, so wait until we can rely on it...
+     * Ns_Log(Notice, "nsdbpg: version %s loaded, based on %s", NSDBPG_VERSION, ...);
+     */
+    Ns_Log(Notice, "nsdbpg: version %s loaded", NSDBPG_VERSION);
+
     return NS_OK;
 }
 

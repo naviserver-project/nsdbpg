@@ -751,7 +751,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 static int
 DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql)
 {
-    Connection *pconn = handle->connection;
+    Connection *pconn;
     const char *pqerror;
 
     NS_NONNULL_ASSERT(interp != NULL);
@@ -759,6 +759,8 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     NS_NONNULL_ASSERT(cmd != NULL);
     NS_NONNULL_ASSERT(sql != NULL);
 
+    pconn = handle->connection;
+    
     Tcl_AppendResult(interp, "Database operation \"", cmd, "\" failed", NULL);
     if (handle->cExceptionCode[0] != '\0') {
         Tcl_AppendResult(interp, " (exception ", handle->cExceptionCode,
@@ -946,7 +948,7 @@ parse_bind_variables(const char *input,
 static int
 get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *conn, int fd) 
 {
-    Connection *pconn = handle->connection;
+    Connection *pconn;
     char       *segment_pos;
     int         segment = 1;
 
@@ -954,6 +956,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
     NS_NONNULL_ASSERT(handle != NULL);
     NS_NONNULL_ASSERT(query != NULL);
 
+    pconn = handle->connection;
     segment_pos = query + strlen(query);
 
     for (;;) {
@@ -999,7 +1002,7 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
 static int
 blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
 {
-    Connection *pconn = handle->connection;
+    Connection *pconn;
     char        query[100];
     int         result;
 
@@ -1007,6 +1010,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
     NS_NONNULL_ASSERT(handle != NULL);
     NS_NONNULL_ASSERT(lob_id != NULL);
 
+    pconn = handle->connection;
     strcpy(query, "SELECT BYTE_LEN, DATA FROM LOB_DATA WHERE LOB_ID = ");
     strcat(query, lob_id);
     strcat(query, " AND SEGMENT = ");
@@ -1037,7 +1041,7 @@ static int
 blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
 		    bool to_conn_p, const char *filename)
 {
-    Connection  *pconn = handle->connection;
+    Connection  *pconn;
     Ns_Conn     *conn = NULL;
     char         query[100];
     int          fd = -1, result = TCL_OK;
@@ -1046,6 +1050,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
     NS_NONNULL_ASSERT(handle != NULL);
     NS_NONNULL_ASSERT(lob_id != NULL);
 
+    pconn = handle->connection;
     if (to_conn_p == NS_TRUE) {
         conn = Ns_TclGetConn(interp);
 
