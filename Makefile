@@ -57,5 +57,3 @@ MODLIBS    += -lnsdb -lpq
 
 include  $(NAVISERVER)/include/Makefile.module
 
-cppcheck:
-	cppcheck --verbose --enable=all -I$(PGINCLUDE) $(CFLAGS_INCLUDE) *.c
