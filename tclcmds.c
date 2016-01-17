@@ -78,7 +78,7 @@ static int blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
 static int blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
-                               int to_conn_p, const char *filename)
+                               bool to_conn_p, const char *filename)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
 static int blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *valueObj)
