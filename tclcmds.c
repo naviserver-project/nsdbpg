@@ -1168,7 +1168,6 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *
         value_ptr += segment_len;
         segment++;
     }
-    Ns_Log(Notice, "done");
 
     return TCL_OK;
 }
