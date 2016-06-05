@@ -322,7 +322,7 @@ BindRow(Ns_DbHandle *handle)
         row = handle->row;
 
         for (i = 0; i < pconn->nCols; i++) {
-            Ns_SetPut(row, PQfname(pconn->res, i), NULL);
+            (void)Ns_SetPut(row, PQfname(pconn->res, i), NULL);
         }
     }
     handle->fetchingRows = NS_FALSE;
