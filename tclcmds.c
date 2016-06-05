@@ -132,8 +132,8 @@ Ns_PgServerInit(const char *server, char *UNUSED(module), char *UNUSED(driver))
 static int
 AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
-    Tcl_CreateObjCommand(interp, "ns_pg",   PgObjCmd,  NULL, NULL);
-    Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
+    (void)Tcl_CreateObjCommand(interp, "ns_pg",   PgObjCmd,  NULL, NULL);
+    (void)Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
 
     return NS_OK;
 }
