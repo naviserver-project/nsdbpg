@@ -162,7 +162,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
     Connection     *pconn;
     int             subcmd, result;
 
-    static const char *subcmds[] = {
+    static const char *const subcmds[] = {
 	"blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file", 
 	"db", "host", "options", "port", "number", "error", "status", "ntuples",
 	NULL
@@ -488,7 +488,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     int                result, subcmd, nrFragments;
     int                haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
 
-    static const char *subcmds[] = {
+    static const char *const subcmds[] = {
 	"dml", "1row", "0or1row", "select", "exec", 
 	NULL
     };
