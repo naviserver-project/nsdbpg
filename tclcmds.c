@@ -610,7 +610,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 		    /*
 		     * Determine, if we need the SQL escape string syntax E'...'
 		     */
-		    for (p = value; *p; p++) {
+		    for (p = value; *p != '\0'; p++) {
 		        if (unlikely(*p == '\\')) {
 			    needEscapeStringSyntax = 1;
 			    break;
@@ -631,7 +631,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                      * We need to double-quote quotes and
                      * escape backslashes inside the value.
                      */
-                    for (p = value; *p; p++) {
+                    for (p = value; *p != '\0'; p++) {
                         if (unlikely(*p == '\'')) {
                             if (likely(p > value)) {
                                 Ns_DStringNAppend(dsPtr, value, p - value);
