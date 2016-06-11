@@ -1051,7 +1051,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
     NS_NONNULL_ASSERT(lob_id != NULL);
 
     pconn = handle->connection;
-    if (to_conn_p == NS_TRUE) {
+    if (to_conn_p) {
         conn = Ns_TclGetConn(interp);
 
         if (conn == NULL) {
@@ -1087,7 +1087,7 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id,
     result = get_blob_tuples(interp, handle, query, conn, fd); 
 
  bailout:
-    if (to_conn_p == NS_FALSE) {
+    if (!to_conn_p) {
         (void) ns_close(fd);
     }
 
@@ -1111,7 +1111,7 @@ write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, bool to_
     NS_NONNULL_ASSERT(bufp != NULL);
     assert(fd != NS_INVALID_FD || conn != NULL);
 
-    if (to_conn_p == NS_TRUE) {
+    if (to_conn_p) {
         size_t n = Ns_ConnContentSent(conn);
 
         if (Ns_ConnWriteData(conn, bufp, length, NS_CONN_STREAM) == NS_OK) {
