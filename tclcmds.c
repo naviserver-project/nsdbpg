@@ -123,16 +123,25 @@ static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query,
  *----------------------------------------------------------------------
  */
 
-int
-Ns_PgServerInit(const char *server, char *UNUSED(module), char *UNUSED(driver))
+Ns_ReturnCode
+Ns_PgServerInit(const char *server, char *module, char *driver)
 {
-    return Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
+    static bool   initialized = NS_FALSE;
+    Ns_ReturnCode status;
+
+    if (!initialized) {
+        initialized = NS_TRUE;
+        status = Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
+    } else {
+        status = NS_OK;
+    }
+    return status;
 }
 
 static int
 AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
-    (void)Tcl_CreateObjCommand(interp, "ns_pg",   PgObjCmd,  NULL, NULL);
+    (void)Tcl_CreateObjCommand(interp, "ns_pg",      PgObjCmd,     NULL, NULL);
     (void)Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
 
     return NS_OK;
@@ -474,19 +483,16 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 static int
 PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
 {
-    linkedListElement_t *bind_variables;
-    linkedListElement_t *var_p;
-    linkedListElement_t *sql_fragments;
-    linkedListElement_t *frag_p;
-    Ns_DString         ds, *dsPtr = NULL;
-    Tcl_Obj           *sqlObj;
-    ParsedSQL         *parsedSQLptr;
-    Ns_DbHandle       *handle;
-    Ns_Set            *rowPtr, *set = NULL;
-    const char        *sql, *cmd, *p, *value = NULL;
-    const char        *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
-    int                result, subcmd, nrFragments;
-    int                haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
+    linkedListElement_t *bind_variables, *var_p, *sql_fragments, *frag_p;
+    Ns_DString           ds, *dsPtr = NULL;
+    Tcl_Obj             *sqlObj;
+    ParsedSQL           *parsedSQLptr;
+    Ns_DbHandle         *handle;
+    Ns_Set              *rowPtr, *set = NULL;
+    const char          *sql, *cmd, *p, *value = NULL;
+    const char          *arg3 = (argc > 3) ? Tcl_GetString(argv[3]) : NULL;
+    int                  result, subcmd, nrFragments;
+    bool                 haveBind = (arg3 != NULL) ? STREQ("-bind", arg3) : 0;
 
     static const char *const subcmds[] = {
 	"dml", "1row", "0or1row", "select", "exec", 
@@ -498,11 +504,11 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     };
 
     if (argc < 4 
-	|| (haveBind == 0 && (argc != 4))
-        || (haveBind != 0 && (argc != 6))) {
+	|| (!haveBind && (argc != 4))
+        || (haveBind  && (argc != 6))) {
         return BadArgs(interp, argv, "dbId sql");
     }
-
+    
     result = Tcl_GetIndexFromObj(interp, argv[1], subcmds, "ns_pg_bind subcmd", 0, &subcmd);
     if (result != TCL_OK) {
         return TCL_ERROR;
@@ -528,7 +534,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
     cmd = Tcl_GetString(argv[1]);
 
-    if (haveBind != 0) {
+    if (haveBind) {
 	const char *setId = Tcl_GetString(argv[4]);
         set = Ns_TclGetSet(interp, setId);
         if (set == NULL) {
@@ -587,7 +593,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
 
             if (var_p != NULL) {
                 if (set == NULL) {
-                    value = Tcl_GetVar(interp, var_p->chars, 0);
+                    value = Tcl_GetVar2(interp, var_p->chars, NULL, 0);
                 } else {
                     value = Ns_SetGet(set, var_p->chars);
                 }
