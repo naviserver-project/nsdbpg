@@ -138,7 +138,7 @@ Ns_PgServerInit(const char *server, char *module, char *driver)
     return status;
 }
 
-static int
+static Ns_ReturnCode
 AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
     (void)Tcl_CreateObjCommand(interp, "ns_pg",      PgObjCmd,     NULL, NULL);

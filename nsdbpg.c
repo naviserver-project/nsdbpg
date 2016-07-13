@@ -44,14 +44,14 @@ const char *pgDbName = "PostgreSQL";
  */
 
 static const char *DbType(Ns_DbHandle *handle);
-static int     OpenDb(Ns_DbHandle *handle);
-static int     CloseDb(Ns_DbHandle *handle);
+static Ns_ReturnCode OpenDb(Ns_DbHandle *handle);
+static Ns_ReturnCode CloseDb(Ns_DbHandle *handle);
 static Ns_Set *BindRow(Ns_DbHandle *handle);
 static int     Exec(Ns_DbHandle *handle, const char *sql);
 static int     GetRow(const Ns_DbHandle *handle, const Ns_Set *row);
 static int     GetRowCount(const Ns_DbHandle *handle);
-static int     Flush(const Ns_DbHandle *handle);
-static int     ResetHandle(Ns_DbHandle *handle);
+static Ns_ReturnCode Flush(const Ns_DbHandle *handle);
+static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle);
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
@@ -96,7 +96,7 @@ static unsigned int id = 0u;     /* Global count of connections. */
  *----------------------------------------------------------------------
  */
 
-NS_EXPORT int
+NS_EXPORT Ns_ReturnCode
 Ns_DbDriverInit(const char *driver, const char *configPath)
 {
     const char *style;
@@ -176,7 +176,7 @@ DbType(Ns_DbHandle *UNUSED(handle))
  *----------------------------------------------------------------------
  */
 
-static int
+static Ns_ReturnCode
 OpenDb(Ns_DbHandle *handle)
 {
     Connection  *pconn;
@@ -255,7 +255,7 @@ OpenDb(Ns_DbHandle *handle)
  *----------------------------------------------------------------------
  */
 
-static int
+static Ns_ReturnCode
 CloseDb(Ns_DbHandle *handle) {
 
     Connection *pconn;
@@ -570,7 +570,7 @@ GetRowCount(const Ns_DbHandle *handle)
 
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: No connection.");
-        return NS_ERROR;
+        return (int)NS_ERROR;
     }
     pconn = handle->connection;
 
@@ -594,7 +594,7 @@ GetRowCount(const Ns_DbHandle *handle)
  *----------------------------------------------------------------------
  */
 
-static int
+static Ns_ReturnCode
 Flush(const Ns_DbHandle *handle)
 {
     Connection *pconn;
@@ -632,7 +632,7 @@ Flush(const Ns_DbHandle *handle)
  *----------------------------------------------------------------------
  */
 
-static int
+static Ns_ReturnCode
 ResetHandle(Ns_DbHandle *handle)
 {
     Connection *pconn;
