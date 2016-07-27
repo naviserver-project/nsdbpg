@@ -96,7 +96,7 @@ static unsigned char get_one(unsigned char c);
 static void encode3(const unsigned char *p, unsigned char *buf)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
 
-static void decode3(const unsigned char *p, char *buf, int n)
+static void decode3(const unsigned char *p, unsigned char *buf, int n)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
 
 static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *conn, int fd) 
@@ -972,10 +972,11 @@ get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query, Ns_Conn  *
     for (;;) {
 	const unsigned char *data_column;
         const unsigned char *raw_data;
-	int         i, j, n, byte_len;
-        size_t      obtained_length;
-	char        buf[6001] = "";
+	int                  i, j, n, byte_len;
+        size_t               obtained_length;
+	unsigned char        buf[6001];
 
+        buf[0] = UCHAR('\0');
 	sprintf(segment_pos, "%d", segment);
 	if (Ns_DbExec(handle, query) != NS_ROWS) {
 	    Tcl_AppendResult(interp, "Error selecting data from BLOB", NULL);
@@ -1379,7 +1380,7 @@ get_one(unsigned char c)
 }
 
 static void
-decode3(const unsigned char *p, char *buf, int n)
+decode3(const unsigned char *p, unsigned char *buf, int n)
 {
     unsigned char c1, c2, c3, c4;
 
