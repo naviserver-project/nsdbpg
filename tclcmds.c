@@ -231,7 +231,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
 
     case BlobPutIdx: 
         if (argc == 5) {
-            if (pconn->in_transaction == 0) {
+            if (!pconn->in_transaction) {
                 Ns_TclPrintfResult(interp, "blob_put only allowed in transaction");
                 result = TCL_ERROR;
             } else {
@@ -245,7 +245,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *C
 
     case BlobDmlFileIdx:
         if (argc == 5) {
-            if (pconn->in_transaction == 0) {
+            if (!pconn->in_transaction) {
                 Ns_TclPrintfResult(interp, "blob_dml_file only allowed in transaction");
                 result = TCL_ERROR;
             } else {
