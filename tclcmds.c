@@ -484,9 +484,8 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 static int
 PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
 {
-    linkedListElement_t       *bind_variables, *sql_fragments;
-    const linkedListElement_t *var_p;
-    const linkedListElement_t *frag_p;
+    const linkedListElement_t *bind_variables, *sql_fragments;
+    const linkedListElement_t *var_p, *frag_p;
     Ns_DString                 ds, *dsPtr = NULL;
     Tcl_Obj                   *sqlObj;
     ParsedSQL                 *parsedSQLptr;
