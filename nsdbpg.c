@@ -101,16 +101,15 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
 {
     Ns_ReturnCode status = NS_OK;
 
-    if (Ns_DbRegisterDriver(driver, &procs[0]) == NS_OK) {
-        status = NS_ERROR;
-        
-    } else {
+    status = Ns_DbRegisterDriver(driver, &procs[0]);
+    if (status == NS_OK) {
         const char *style = Ns_ConfigGetValue(configPath, "datestyle");
         
         if (style != NULL) {
             if (STRIEQ(style, "ISO") || STRIEQ(style, "SQL")
                 || STRIEQ(style, "POSTGRES") || STRIEQ(style, "GERMAN")
-                || STRIEQ(style, "NONEURO") || STRIEQ(style, "EURO")) {
+                || STRIEQ(style, "NONEURO") || STRIEQ(style, "EURO")
+                ) {
                 Ns_DString  ds;
 
                 Ns_DStringInit(&ds);
@@ -133,6 +132,7 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
          */
         Ns_Log(Notice, "nsdbpg: version %s loaded", NSDBPG_VERSION);
     }
+    
     return status;
 }
 
