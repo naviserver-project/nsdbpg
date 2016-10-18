@@ -99,7 +99,7 @@ static unsigned int id = 0u;     /* Global count of connections. */
 NS_EXPORT Ns_ReturnCode
 Ns_DbDriverInit(const char *driver, const char *configPath)
 {
-    Ns_ReturnCode status = NS_OK;
+    Ns_ReturnCode status;
 
     status = Ns_DbRegisterDriver(driver, &procs[0]);
     if (status == NS_OK) {
