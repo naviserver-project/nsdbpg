@@ -1236,7 +1236,7 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
                 encode3(&in_buf[i], &out_buf[j]);
             }
             out_buf[j] = UCHAR('\0');
-            sprintf(segment_pos, "%d, %ld, '%s')", segment, readlen, out_buf);
+            sprintf(segment_pos, "%d, %" PRIdz ", '%s')", segment, readlen, out_buf);
             if (Ns_DbExec(handle, query) != NS_DML) {
                 Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
                 result = TCL_ERROR;
