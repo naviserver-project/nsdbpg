@@ -397,7 +397,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
 
     while (PQstatus(pconn->pgconn) == CONNECTION_BAD && retry_count-- > 0) {
 
-        int in_transaction = pconn->in_transaction;
+        bool in_transaction = pconn->in_transaction;
 
         /* Backend returns a fatal error if it really crashed.  After a crash,
          * all other backends close with a non-fatal error because shared
@@ -430,8 +430,8 @@ Exec(Ns_DbHandle *handle, const char *sql)
          * you'll find no sympathy on my part.
          */
 
-        if (OpenDb(handle) == NS_ERROR || in_transaction == 1 || retry_query == 0) {
-            if (in_transaction == NS_TRUE) {
+        if (OpenDb(handle) == NS_ERROR || in_transaction || retry_query == 0) {
+            if (in_transaction) {
                 Ns_Log(Notice, "nsdbpg: In transaction, conn died, error returned");
             }
             Ns_DStringFree(&dsSql);
@@ -648,7 +648,7 @@ ResetHandle(Ns_DbHandle *handle)
     } else {
         const Connection *pconn = handle->connection;
 
-        if (pconn->in_transaction == NS_TRUE) {
+        if (pconn->in_transaction) {
             Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
             if (Ns_DbExec(handle, "rollback") != (int)PGRES_COMMAND_OK) {
                 Ns_Log(Error, "nsdbpg: Rollback failed.");
