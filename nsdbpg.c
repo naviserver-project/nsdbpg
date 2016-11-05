@@ -180,61 +180,63 @@ DbType(Ns_DbHandle *UNUSED(handle))
 static Ns_ReturnCode
 OpenDb(Ns_DbHandle *handle)
 {
-    Connection   *pconn;
-    PGconn       *pgconn;
-    Ns_DString    ds;
-    char         *host, *port, *db = NULL;
     Ns_ReturnCode status = NS_OK;
 
     if (handle == NULL || handle->datasource == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid handle.");
-        return NS_ERROR;
-    }
-
-    Ns_DStringInit(&ds);
-    Ns_DStringAppend(&ds, handle->datasource);
-    host = ds.string;
-    port = strchr(host, INTCHAR(':'));
-    if (port != NULL) {
-        db = strchr(port + 1, INTCHAR(':'));
-    }
-    if (db == NULL) {
-        Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
-               "Should be host:port:database.",
-               handle->driver, handle->datasource);
         status = NS_ERROR;
 
     } else {
-        *port++ = '\0';
-        *db++ = '\0';
-        if (STREQ(host, "localhost")) {
-            Ns_Log(Notice, "nsdbpg: Opening %s on %s", db, host);
-            pgconn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
-                                  handle->password);
-        } else {
-            Ns_Log(Notice, "nsdbpg: Opening %s on %s, port %s", db, host, port);
-            pgconn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
-                                  handle->password);
-        }
-        if (PQstatus(pgconn) != CONNECTION_OK) {
-            Ns_Log(Error, "nsdbpg(%s):  Could not connect to %s: %s",
-                   handle->driver, handle->datasource, PQerrorMessage(pgconn));
-            PQfinish(pgconn);
-            status = NS_ERROR;
-        } else {
-            Ns_Log(Notice, "nsdbpg(%s):  Opened connection to %s.",
-                   handle->driver, handle->datasource);
+        Connection   *pconn;
+        PGconn       *pgconn;
+        Ns_DString    ds;
+        char         *host, *port, *db = NULL;
 
-            pconn = ns_malloc(sizeof(Connection));
-            pconn->pgconn = pgconn;
-            pconn->res = NULL;
-            pconn->id = id++;
-            pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
-            pconn->in_transaction = NS_FALSE;
-            handle->connection = pconn;
-        
-            if (dateStyle != NULL && Ns_DbExec(handle, dateStyle) != NS_DML) {
+        Ns_DStringInit(&ds);
+        Ns_DStringAppend(&ds, handle->datasource);
+        host = ds.string;
+        port = strchr(host, INTCHAR(':'));
+        if (port != NULL) {
+            db = strchr(port + 1, INTCHAR(':'));
+        }
+        if (db == NULL) {
+            Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
+                   "Should be host:port:database.",
+                   handle->driver, handle->datasource);
+            status = NS_ERROR;
+
+        } else {
+            *port++ = '\0';
+            *db++ = '\0';
+            if (STREQ(host, "localhost")) {
+                Ns_Log(Notice, "nsdbpg: Opening %s on %s", db, host);
+                pgconn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
+                                      handle->password);
+            } else {
+                Ns_Log(Notice, "nsdbpg: Opening %s on %s, port %s", db, host, port);
+                pgconn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
+                                      handle->password);
+            }
+            if (PQstatus(pgconn) != CONNECTION_OK) {
+                Ns_Log(Error, "nsdbpg(%s):  Could not connect to %s: %s",
+                       handle->driver, handle->datasource, PQerrorMessage(pgconn));
+                PQfinish(pgconn);
                 status = NS_ERROR;
+            } else {
+                Ns_Log(Notice, "nsdbpg(%s):  Opened connection to %s.",
+                       handle->driver, handle->datasource);
+
+                pconn = ns_malloc(sizeof(Connection));
+                pconn->pgconn = pgconn;
+                pconn->res = NULL;
+                pconn->id = id++;
+                pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
+                pconn->in_transaction = NS_FALSE;
+                handle->connection = pconn;
+        
+                if (dateStyle != NULL && Ns_DbExec(handle, dateStyle) != NS_DML) {
+                    status = NS_ERROR;
+                }
             }
         }
     }
@@ -512,38 +514,40 @@ Exec(Ns_DbHandle *handle, const char *sql)
 static int
 GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
 {
-    Connection  *pconn;
-    size_t       i;
+    int          result = NS_OK;
 
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: No connection.");
-        return NS_ERROR;
-    } 
+        result = NS_ERROR;
 
-    if (row == NULL) {
+    } else if (row == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid Ns_Set -> row.");
-        return NS_ERROR;
-    }
+        result = NS_ERROR;
 
-    pconn = handle->connection;
+    } else {
+        Connection *pconn = handle->connection;
 
-    if (pconn->nCols == 0) {
-        Ns_Log(Error, "nsdbpg(%s):  GetRow called outside a fetch row loop.",
-               handle->datasource);
-        return NS_ERROR;
-    }
-    if (pconn->curTuple == pconn->nTuples) {
-        PQclear(pconn->res);
-        pconn->res = NULL;
-        pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
-        return NS_END_DATA;
-    }
-    for (i = 0u; i < (size_t)pconn->nCols; i++) {
-        Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, (int)i));
-    }
-    pconn->curTuple++;
+        if (pconn->nCols == 0) {
+            Ns_Log(Error, "nsdbpg(%s):  GetRow called outside a fetch row loop.",
+                   handle->datasource);
+            result = NS_ERROR;
 
-    return NS_OK;
+        } else if (pconn->curTuple == pconn->nTuples) {
+            PQclear(pconn->res);
+            pconn->res = NULL;
+            pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
+            result = NS_END_DATA;
+
+        } else {
+            size_t i;
+ 
+            for (i = 0u; i < (size_t)pconn->nCols; i++) {
+                Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, (int)i));
+            }
+            pconn->curTuple++;
+        }
+    }
+    return result;
 }
 
 /*
