@@ -124,7 +124,7 @@ static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query,
  */
 
 Ns_ReturnCode
-Ns_PgServerInit(const char *server, char *module, char *driver)
+Ns_PgServerInit(const char *server, const char *module, const char *driver)
 {
     static bool   initialized = NS_FALSE;
     Ns_ReturnCode status;
