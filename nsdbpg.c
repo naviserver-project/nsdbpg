@@ -483,6 +483,12 @@ Exec(Ns_DbHandle *handle, const char *sql)
         /*pconn->nTuples = PQntuples(pconn->res);*/
         result = NS_DML;
         break;
+    case PGRES_BAD_RESPONSE:   /* fall through */
+    case PGRES_FATAL_ERROR:    /* fall through */
+    case PGRES_NONFATAL_ERROR: /* fall through */
+    case PGRES_COPY_BOTH:      /* fall through */
+    case PGRES_EMPTY_QUERY:    /* fall through */
+    case PGRES_SINGLE_TUPLE:   /* fall through */
     default:
         Ns_Log(Error, "nsdbpg: result status: %d message: %s",
                PQresultStatus(pconn->res), PQerrorMessage(pconn->pgconn));
