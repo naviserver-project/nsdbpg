@@ -37,7 +37,7 @@
 #ifndef DBPG_H
 #define DBPG_H
 
-#define NSDBPG_VERSION "2.1"
+#define NSDBPG_VERSION "2.2"
 
 #include <nsdb.h>
 #include <libpq-fe.h>

@@ -124,7 +124,7 @@ static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query,
  */
 
 Ns_ReturnCode
-Ns_PgServerInit(const char *server, const char *module, const char *driver)
+Ns_PgServerInit(const char *server, const char *UNUSED(module), const char *UNUSED(driver))
 {
     static bool   initialized = NS_FALSE;
     Ns_ReturnCode status;
@@ -717,10 +717,10 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     case ExecIdx:
         switch (Ns_DbExec(handle, sql)) {
         case NS_DML:
-            Tcl_SetResult(interp, "NS_DML", TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj("NS_DML", 6));
             break;
         case NS_ROWS:
-            Tcl_SetResult(interp, "NS_ROWS", TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj("NS_ROWS", 7));
             break;
         default:
             result = DbFail(interp, handle, cmd, sql);

@@ -55,6 +55,7 @@ static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle);
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
+NS_EXPORT NsDb_DriverInitProc Ns_DbDriverInit;
 
 /*
  * Local variables defined in this file.
