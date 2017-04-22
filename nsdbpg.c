@@ -424,7 +424,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
          * inserts or whatever.  Not good!   So we return an error.  If
          * the programmer's catching transaction errors and rolling back
          * properly, there will be no problem - the rollback will be
-         * flagged as occuring outside a transaction but there's no
+         * flagged as occurring outside a transaction but there's no
          * harm in that.
          *
          * If the programmer's started a transaction with no "catch",
@@ -675,7 +675,7 @@ ResetHandle(Ns_DbHandle *handle)
  *
  *      Set the current transaction state based on the query pointed
  *      to by "sql".  Should be called only after the query has
- *      successfully been executed.
+ *      successfuly been executed.
  *
  * Results:
  *      None.
