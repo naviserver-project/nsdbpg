@@ -582,7 +582,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
         Ns_DStringInit(dsPtr);
 
         /*
-         * Rebuild the query and substitute the actual tcl variable values
+         * Rebuild the query and substitute the actual Tcl variable values
          * for the bind variables.
          */
 

@@ -675,7 +675,7 @@ ResetHandle(Ns_DbHandle *handle)
  *
  *      Set the current transaction state based on the query pointed
  *      to by "sql".  Should be called only after the query has
- *      successfuly been executed.
+ *      successfully been executed.
  *
  * Results:
  *      None.
