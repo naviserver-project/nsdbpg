@@ -68,6 +68,13 @@ Examples for a build operation:
     export PG=/usr/local/pg964
     make PGLIB=$PG/lib PGINCLUDE=$PG/include
 
+    make PGINCLUDE=/usr/include/postgresql
+
+To build/install on a non-standard path, use e.g.:
+    export PG=/usr/local/pg964
+    make PGLIB=$PG/lib PGINCLUDE=$PG/include NAVISERVER=/opt/local/ns/
+    make PGLIB=$PG/lib PGINCLUDE=$PG/include NAVISERVER=/opt/local/ns/ install
+
 Under MacPorts, you might use something like:
     make PGLIB=/opt/local/lib/postgresql96/ PGINCLUDE=/opt/local/include/postgresql96/
 
