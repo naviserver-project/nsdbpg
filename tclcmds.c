@@ -788,14 +788,15 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     } else {
         Ns_DStringPrintf(&ds, "\n");
     }
-    if (strlen(sql) > maxLen) {
-        Ns_DStringPrintf(&ds, "\nSQL (truncated to %lu characters): ", maxLen);
-        Ns_DStringNAppend(&ds, sql, (int)maxLen);
-        Ns_DStringNAppend(&ds, "...", 3);
-    } else {
-        Ns_DStringPrintf(&ds, "\nSQL: %s", sql);
+    if (handle->verbose) {
+        if (strlen(sql) > maxLen) {
+            Ns_DStringPrintf(&ds, "\nSQL (truncated to %lu characters): ", maxLen);
+            Ns_DStringNAppend(&ds, sql, (int)maxLen);
+            Ns_DStringNAppend(&ds, "...", 3);
+        } else {
+            Ns_DStringPrintf(&ds, "\nSQL: %s", sql);
+        }
     }
-
     Tcl_DStringResult(interp, &ds);
 
     return TCL_ERROR;
