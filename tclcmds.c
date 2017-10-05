@@ -763,6 +763,7 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     const Connection *pconn;
     const char       *pqerror;
     Tcl_DString       ds;
+    size_t            maxLen = 10000;
 
     NS_NONNULL_ASSERT(interp != NULL);
     NS_NONNULL_ASSERT(handle != NULL);
@@ -787,7 +788,13 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     } else {
         Ns_DStringPrintf(&ds, "\n");
     }
-    Ns_DStringPrintf(&ds, "\nSQL: %s", sql);
+    if (strlen(sql) > maxLen) {
+        Ns_DStringPrintf(&ds, "\nSQL (truncated to %lu characters): ", maxLen);
+        Ns_DStringNAppend(&ds, sql, (int)maxLen);
+        Ns_DStringNAppend(&ds, "...", 3);
+    } else {
+        Ns_DStringPrintf(&ds, "\nSQL: %s", sql);
+    }
 
     Tcl_DStringResult(interp, &ds);
 
