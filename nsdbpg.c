@@ -127,11 +127,15 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
             }
         }
 
+#if defined(PG_VERSION_NUM) && PG_VERSION_NUM > 90100
         /*
-         * PQlibVersion() was introduced in pg 9.1, so wait until we can rely on it...
-         * Ns_Log(Notice, "nsdbpg: version %s loaded, based on %s", NSDBPG_VERSION, ...);
+         * PQlibVersion() was introduced in PostgreSQL 9.1
          */
-        Ns_Log(Notice, "nsdbpg: version %s loaded", NSDBPG_VERSION);
+        Ns_Log(Notice, "nsdbpg: version %s loaded, based on PostgreSQL %s and libbpq %d",
+               NSDBPG_VERSION, PG_VERSION, PQlibVersion());
+#else
+        Ns_Log(Notice, "nsdbpg: version %s loaded absed on PostgreSQL %s", NSDBPG_VERSION, PG_VERSION);
+#endif
     }
     
     return status;
