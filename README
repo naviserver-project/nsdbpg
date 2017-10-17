@@ -65,13 +65,13 @@ The build step needs from PostgreSQL
 
 Examples for a build operation:
 
-    export PG=/usr/local/pg964
+    export PG=/usr/local/pg965
     make PGLIB=$PG/lib PGINCLUDE=$PG/include
 
     make PGINCLUDE=/usr/include/postgresql
 
 To build/install on a non-standard path, use e.g.:
-    export PG=/usr/local/pg964
+    export PG=/usr/local/pg965
     make PGLIB=$PG/lib PGINCLUDE=$PG/include NAVISERVER=/opt/local/ns/
     make PGLIB=$PG/lib PGINCLUDE=$PG/include NAVISERVER=/opt/local/ns/ install
 
