@@ -134,7 +134,7 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
         Ns_Log(Notice, "nsdbpg: version %s loaded, based on PostgreSQL %s and libbpq %d",
                NSDBPG_VERSION, PG_VERSION, PQlibVersion());
 #else
-        Ns_Log(Notice, "nsdbpg: version %s loaded absed on PostgreSQL %s", NSDBPG_VERSION, PG_VERSION);
+        Ns_Log(Notice, "nsdbpg: version %s loaded based on PostgreSQL %s", NSDBPG_VERSION, PG_VERSION);
 #endif
     }
     
