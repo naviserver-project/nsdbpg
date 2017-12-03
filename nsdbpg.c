@@ -195,15 +195,16 @@ OpenDb(Ns_DbHandle *handle)
         Connection   *pconn;
         PGconn       *pgconn;
         Ns_DString    ds;
-        char         *host, *port, *db = NULL;
+        char         *host, *portStart = NULL, *db = NULL;
 
         Ns_DStringInit(&ds);
         Ns_DStringAppend(&ds, handle->datasource);
-        host = ds.string;
-        port = strchr(host, INTCHAR(':'));
-        if (port != NULL) {
-            db = strchr(port + 1, INTCHAR(':'));
+
+        Ns_HttpParseHost(ds.string, &host, &portStart);
+        if (portStart != NULL) {
+            db = strchr(portStart + 1, INTCHAR(':'));
         }
+
         if (db == NULL) {
             Ns_Log(Error, "nsdbpg(%s):  Malformed datasource: \" %s\". "
                    "Should be host:port:database.",
@@ -211,15 +212,14 @@ OpenDb(Ns_DbHandle *handle)
             status = NS_ERROR;
 
         } else {
-            *port++ = '\0';
+            *portStart++ = '\0';
             *db++ = '\0';
+            Ns_Log(Notice, "nsdbpg: Opening %s on %s, port %s", db, host, portStart);
             if (STREQ(host, "localhost")) {
-                Ns_Log(Notice, "nsdbpg: Opening %s on %s", db, host);
-                pgconn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
+                pgconn = PQsetdbLogin(NULL, portStart, NULL, NULL, db, handle->user,
                                       handle->password);
             } else {
-                Ns_Log(Notice, "nsdbpg: Opening %s on %s, port %s", db, host, port);
-                pgconn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
+                pgconn = PQsetdbLogin(host, portStart, NULL, NULL, db, handle->user,
                                       handle->password);
             }
             if (PQstatus(pgconn) != CONNECTION_OK) {
@@ -311,7 +311,7 @@ BindRow(Ns_DbHandle *handle)
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid connection.");
 
-    } else if (handle->fetchingRows == 0) {
+    } else if (handle->fetchingRows == NS_FALSE) {
         Ns_Log(Error, "nsdbpg(%s): No rows waiting to bind.", handle->datasource);
 
     } else {
