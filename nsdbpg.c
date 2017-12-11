@@ -491,9 +491,11 @@ Exec(Ns_DbHandle *handle, const char *sql)
     case PGRES_BAD_RESPONSE:   /* fall through */
     case PGRES_FATAL_ERROR:    /* fall through */
     case PGRES_NONFATAL_ERROR: /* fall through */
-    case PGRES_COPY_BOTH:      /* fall through */
     case PGRES_EMPTY_QUERY:    /* fall through */
+#if defined(PG_VERSION_NUM) && PG_VERSION_NUM > 90100
+    case PGRES_COPY_BOTH:      /* fall through */
     case PGRES_SINGLE_TUPLE:   /* fall through */
+#endif
     default:
         Ns_Log(Error, "nsdbpg: result status: %d message: %s",
                PQresultStatus(pconn->res), PQerrorMessage(pconn->pgconn));
