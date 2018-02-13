@@ -58,7 +58,7 @@ static Ns_TclTraceProc AddCmds;
 static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
 
-static int BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
+static int BadArgs(Tcl_Interp *interp, Tcl_Obj *const argv[], const char *args)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3);
 
 static linkedListElement_t *linkedListElement_new(const char *chars)
@@ -165,7 +165,7 @@ AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
  */
 
 static int
-PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
+PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
 {
     Ns_DbHandle      *handle;
     const Connection *pconn;
@@ -482,7 +482,7 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
  */
 
 static int
-PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *CONST argv[])
+PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
 {
     const linkedListElement_t *bind_variables, *sql_fragments;
     const linkedListElement_t *var_p, *frag_p;
@@ -819,7 +819,7 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
  */
 
 static int
-BadArgs(Tcl_Interp *interp, Tcl_Obj *CONST argv[], const char *args)
+BadArgs(Tcl_Interp *interp, Tcl_Obj *const argv[], const char *args)
 {
     Ns_TclPrintfResult(interp, "wrong # args: should be \"%s %s %s\"",
                        Tcl_GetString(argv[0]), Tcl_GetString(argv[1]), args);
