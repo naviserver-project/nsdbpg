@@ -311,7 +311,7 @@ BindRow(Ns_DbHandle *handle)
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid connection.");
 
-    } else if (handle->fetchingRows == NS_FALSE) {
+    } else if (!handle->fetchingRows) {
         Ns_Log(Error, "nsdbpg(%s): No rows waiting to bind.", handle->datasource);
 
     } else {
