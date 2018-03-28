@@ -453,7 +453,7 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
     srcPtr->nrFragments = LinkedList_len(srcPtr->bind_variables);
 
     /*
-     * Free the old interal representation and store own structure as internal
+     * Free the old internal representation and store own structure as internal
      * representation.
      */
     TclFreeIntRep(objPtr);
