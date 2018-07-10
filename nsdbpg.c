@@ -105,7 +105,7 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
     status = Ns_DbRegisterDriver(driver, &procs[0]);
     if (status == NS_OK) {
         const char *style = Ns_ConfigGetValue(configPath, "datestyle");
-        
+
         if (style != NULL) {
             if (STRIEQ(style, "ISO") || STRIEQ(style, "SQL")
                 || STRIEQ(style, "POSTGRES") || STRIEQ(style, "GERMAN")
@@ -137,7 +137,7 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
         Ns_Log(Notice, "nsdbpg: version %s loaded based on PostgreSQL %s", NSDBPG_VERSION, PG_VERSION);
 #endif
     }
-    
+
     return status;
 }
 
@@ -238,7 +238,7 @@ OpenDb(Ns_DbHandle *handle)
                 pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
                 pconn->in_transaction = NS_FALSE;
                 handle->connection = pconn;
-        
+
                 if (dateStyle != NULL && Ns_DbExec(handle, dateStyle) != NS_DML) {
                     status = NS_ERROR;
                 }
@@ -272,13 +272,13 @@ CloseDb(Ns_DbHandle *handle) {
     if (handle == NULL || handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg: Invalid connection.");
         status = NS_ERROR;
-        
+
     } else {
         Connection *pconn = handle->connection;
 
         Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s):  Closing connection: %u",
                handle->poolname, pconn->id);
-        
+
         PQfinish(pconn->pgconn);
         ns_free(pconn);
         handle->connection = NULL;
@@ -316,11 +316,11 @@ BindRow(Ns_DbHandle *handle)
 
     } else {
         Connection *pconn = handle->connection;
-            
+
         row = handle->row;
         if (PQresultStatus(pconn->res) == PGRES_TUPLES_OK) {
             int i;
-            
+
             pconn->curTuple = 0;
             pconn->nCols = PQnfields(pconn->res);
             pconn->nTuples = PQntuples(pconn->res);
@@ -389,14 +389,14 @@ Exec(Ns_DbHandle *handle, const char *sql)
     /* Set error result for exception message -- not sure that this
        belongs here in DRB-improved driver..... but, here it is
        anyway, as it can't really hurt anything :-) */
-   
+
     if (PQresultStatus(pconn->res) == PGRES_BAD_RESPONSE) {
         Ns_DStringAppend(&handle->dsExceptionMsg, "PGRES_BAD_RESPONSE ");
     }
     Ns_DStringAppend(&handle->dsExceptionMsg,
                      PQresultErrorMessage(pconn->res));
 
-    /* This loop should actually be safe enough, but we'll take no 
+    /* This loop should actually be safe enough, but we'll take no
      * chances and guard against infinite retries with a counter.
      */
 
@@ -412,7 +412,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
 
         int retry_query = PQresultStatus(pconn->res) == PGRES_NONFATAL_ERROR;
 
-        /* Reconnect messages need to be logged regardless of Verbose. */    
+        /* Reconnect messages need to be logged regardless of handle->verbose. */
 
         Ns_Log(Notice, "nsdbpg: Trying to reopen database connection");
 
@@ -449,7 +449,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
         PQclear(pconn->res);
         pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
-        /* This may again break the connection for two reasons: 
+        /* This may again break the connection for two reasons:
          * our query may be a back-end crashing query or another
          * backend may've crashed after we reopened the backend.
          * Neither's at all likely but we'll loop back and try
@@ -553,7 +553,7 @@ GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
 
         } else {
             size_t i;
- 
+
             for (i = 0u; i < (size_t)pconn->nCols; i++) {
                 Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, (int)i));
             }
@@ -662,7 +662,9 @@ ResetHandle(Ns_DbHandle *handle)
         const Connection *pconn = handle->connection;
 
         if (pconn->in_transaction) {
-            Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
+            if (handle->verbose) {
+                Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
+            }
             if (Ns_DbExec(handle, "rollback") != (int)PGRES_COMMAND_OK) {
                 Ns_Log(Error, "nsdbpg: Rollback failed.");
             }
@@ -702,17 +704,22 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
     }
     if (strncasecmp(sql, "begin", 5u) == 0) {
         pconn->in_transaction = NS_TRUE;
-        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Entering transaction.", handle->poolname);
-
+        if (handle->verbose) {
+            Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Entering transaction.", handle->poolname);
+        }
     } else if (strncasecmp(sql, "end", 3u) == 0
                || strncasecmp(sql, "commit", 6u) == 0) {
         pconn->in_transaction = NS_FALSE;
-        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Committing transaction.", handle->poolname);
+        if (handle->verbose) {
+            Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Committing transaction.", handle->poolname);
+        }
 
     } else if (strncasecmp(sql, "abort", 5u) == 0
                || strncasecmp(sql, "rollback", 8u) == 0) {
         pconn->in_transaction = NS_FALSE;
-        Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
+        if (handle->verbose) {
+            Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Rolling back transaction.", handle->poolname);
+        }
     }
 }
 
@@ -724,4 +731,3 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
  * indent-tabs-mode: nil
  * End:
  */
-
