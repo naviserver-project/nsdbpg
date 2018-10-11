@@ -55,6 +55,40 @@ Contributors to this file include:
 Original example driver by Jim Davidson
 
 
+SAMPLE CONFIGURATION:
+
+Use something like the following snippet in the configuration of
+NaviServer. We assume here that the Tcl variables db_host, db_port,
+db_name and db_user as set accordingly.
+
+===========================================================
+   ns_section ns/db/pools {
+       ns_param   pool1              "Pool 1"
+   }
+   ns_section ns/db/pool/pool1 {
+       # ns_param	maxidle            0
+       # ns_param	maxopen            0
+       ns_param	  connections        15
+       ns_param   LogMinDuration     0.01   ;# when SQL logging is on, log only statements above this duration
+       ns_param	  logsqlerrors       true
+       ns_param	  driver             postgres
+       ns_param	  datasource         "${db_host}:${db_port}:dbname=${db_name}"
+       ns_param	  user               $db_user
+       ns_param	  password           ""
+    }
+===========================================================
+
+If the database is reachable just via SSL, the appropriate
+PostgreSQL "conninfo" parameters can be added to the datasource.
+
+===========================================================
+    ...
+       ns_param	  datasource         "${db_host}:${db_port}:dbname=${db_name} sslmode=require"
+    ...
+===========================================================
+
+
+
 DEVELOPER'S GUIDE:
 
 Run 'make help' for developer information.
