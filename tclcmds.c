@@ -126,16 +126,7 @@ static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query,
 Ns_ReturnCode
 Ns_PgServerInit(const char *server, const char *UNUSED(module), const char *UNUSED(driver))
 {
-    static bool   initialized = NS_FALSE;
-    Ns_ReturnCode status;
-
-    if (!initialized) {
-        initialized = NS_TRUE;
-        status = Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
-    } else {
-        status = NS_OK;
-    }
-    return status;
+    return Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
 }
 
 static Ns_ReturnCode
