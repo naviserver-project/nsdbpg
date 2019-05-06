@@ -62,18 +62,18 @@ NS_EXPORT NsDb_DriverInitProc Ns_DbDriverInit;
  */
 
 static const Ns_DbProc procs[] = {
-    {DbFn_DbType,       (Ns_Callback *)DbType},
-    {DbFn_Name,         (Ns_Callback *)DbType},
-    {DbFn_OpenDb,       (Ns_Callback *)OpenDb},
-    {DbFn_CloseDb,      (Ns_Callback *)CloseDb},
-    {DbFn_BindRow,      (Ns_Callback *)BindRow},
-    {DbFn_Exec,         (Ns_Callback *)Exec},
-    {DbFn_GetRow,       (Ns_Callback *)GetRow},
-    {DbFn_GetRowCount,  (Ns_Callback *)GetRowCount},
-    {DbFn_Flush,        (Ns_Callback *)Flush},
-    {DbFn_Cancel,       (Ns_Callback *)Flush},
-    {DbFn_ResetHandle,  (Ns_Callback *)ResetHandle},
-    {DbFn_ServerInit,   (Ns_Callback *)Ns_PgServerInit},
+    {DbFn_DbType,       (ns_funcptr_t)DbType},
+    {DbFn_Name,         (ns_funcptr_t)DbType},
+    {DbFn_OpenDb,       (ns_funcptr_t)OpenDb},
+    {DbFn_CloseDb,      (ns_funcptr_t)CloseDb},
+    {DbFn_BindRow,      (ns_funcptr_t)BindRow},
+    {DbFn_Exec,         (ns_funcptr_t)Exec},
+    {DbFn_GetRow,       (ns_funcptr_t)GetRow},
+    {DbFn_GetRowCount,  (ns_funcptr_t)GetRowCount},
+    {DbFn_Flush,        (ns_funcptr_t)Flush},
+    {DbFn_Cancel,       (ns_funcptr_t)Flush},
+    {DbFn_ResetHandle,  (ns_funcptr_t)ResetHandle},
+    {DbFn_ServerInit,   (ns_funcptr_t)Ns_PgServerInit},
     {DbFn_End, NULL}
 };
 

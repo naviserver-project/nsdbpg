@@ -1361,7 +1361,7 @@ LinkedList_free_list (linkedListElement_t *head)
 static unsigned char
 enc_one(unsigned char c)
 {
-    c = (c & 0x3Fu) + UCHAR(' ');
+    c = UCHAR((c & 0x3Fu) + UCHAR(' '));
     if (c == UCHAR('\'')) {
         c = UCHAR('a');
     } else if (c == UCHAR('\\')) {
@@ -1373,15 +1373,28 @@ enc_one(unsigned char c)
 static void
 encode3(const unsigned char *p, unsigned char *buf)
 {
+    unsigned char u1, u2, u3, u4;
+
     *buf++ = enc_one(*p >> 2);
-    *buf++ = enc_one((UCHAR(*p << 4)   & 0x30u) | ((p[1] >> 4) & 0x0Fu));
-    *buf++ = enc_one((UCHAR(p[1] << 2) & 0x3Cu) | ((p[2] >> 6) & 0x03u));
-    *buf++ = enc_one(p[2] & 0x3Fu);
+    /*
+     * At least gcc 9 complains, when the expression behind u1 and u2 are used
+     * directly as arguments.
+     */
+    u1 = (*p << 4)   & UCHAR(0x30u);
+    u2 = (p[1] >> 4) & UCHAR(0x0Fu);
+    *buf++ = enc_one(u1 | u2);
+    /*
+     * Use fresh variables, since this allow better pipelining/vectorization.
+     */
+    u3 = (p[1] << 2) & UCHAR(0x3Cu);
+    u4 = (p[2] >> 6) & UCHAR(0x03u);
+    *buf++ = enc_one(u3 | u4);
+    *buf++ = enc_one(p[2] & UCHAR(0x3Fu));
 }
 
 
 /* single-character decode */
-#define DEC(c)  ((UCHAR(c) - UCHAR(' ')) & 0x3Fu)
+#define DEC(c)  ((UCHAR(c) - UCHAR(' ')) & UCHAR(0x3Fu))
 
 static unsigned char
 get_one(unsigned char c)
@@ -1408,13 +1421,14 @@ decode3(const unsigned char *p, unsigned char *buf, long n)
     c4 = get_one(p[3]);
 
     if (n >= 1) {
-        *buf++ = UCHAR(DEC(c1) << 2) | DEC(c2) >> 4;
+        *buf++ = UCHAR(UCHAR(DEC(c1) << 2) | DEC(c2) >> 4);
     }
     if (n >= 2) {
-        *buf++ = UCHAR(DEC(c2) << 4) | DEC(c3) >> 2;
+        *buf++ = UCHAR(UCHAR(DEC(c2) << 4) | DEC(c3) >> 2);
     }
+
     if (n >= 3) {
-        *buf++ = UCHAR(DEC(c3) << 6) | DEC(c4);
+        *buf++ = UCHAR(UCHAR(DEC(c3) << 6) | DEC(c4));
     }
 }
 
