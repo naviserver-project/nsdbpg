@@ -360,7 +360,7 @@ static Tcl_FreeInternalRepProc	ParsedSQLFreeInternalRep;
 static Tcl_SetFromAnyProc       ParsedSQLSetFromAny;
 static Tcl_DupInternalRepProc   ParsedSQLDupInternalRep;
 
-Tcl_ObjType ParsedSQLObjType = {
+static Tcl_ObjType ParsedSQLObjType = {
     "parsedSQL",			/* name */
     ParsedSQLFreeInternalRep,		/* freeIntRepProc */
     ParsedSQLDupInternalRep,		/* dupIntRepProc */
@@ -911,10 +911,6 @@ parse_bind_variables(const char *input,
                 *bp++ = *p;
             }
             break;
-
-        default:
-            /* should not happen */
-            assert(state && 0);
         }
     }
 
