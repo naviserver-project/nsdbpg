@@ -251,7 +251,7 @@
 2016-01-17 18:33 +0100  Gustaf Neumann  <neumann@wu-wien.ac.at>  (8bd4d0a0cc8f)
 
 	* tclcmds.c:
-	- fix confict on prototpyes
+	- fix conflict on prototpyes
 
 2016-01-10 19:44 +0100  Gustaf Neumann  <neumann@wu-wien.ac.at>  (3dcb7829a95d)
 
@@ -389,7 +389,7 @@
 
 2014-11-01 02:24 +0100  Gustaf Neumann  <neumann@wu-wien.ac.at>  (64402f5572d7)
         * nsdbpg.c, tclcmds.c:
-        - prefer boolen expressions
+        - prefer boolean expressions
 
 2014-11-01 00:48 +0100  Gustaf Neumann  <neumann@wu-wien.ac.at>  (195c7e50458b)
         * nsdbpg.c:
@@ -532,7 +532,7 @@
 
 	* nsdbpg.c: Untabify, reindent and reorganize. Drop emulation code
 	for AOLserver 2.x ns_table etc. commands.
-	* tclcmds.c: Split extra Tcl commands and bind vaiable emulation
+	* tclcmds.c: Split extra Tcl commands and bind variable emulation
 	code into new file.
 	* nsdbpg.h:
 	* dbpg.h: Rename header to reflect it's private status. Move all
