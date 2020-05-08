@@ -840,7 +840,7 @@ parse_bind_variables(const char *input,
                      linkedListElement_t **bind_variables,
                      linkedListElement_t **fragments)
 {
-    enum { base, instr, bind } state;
+    enum { state_base, state_instr, state_bind } state;
     const char  *p;
     char        *bindbuf, *bp, *fragbuf, *fp, lastchar;
     int          current_string_length = 0;
@@ -858,17 +858,17 @@ parse_bind_variables(const char *input,
     bindbuf = ns_malloc((inputLen + 1U) * sizeof(char));
     bp = bindbuf;
 
-    for (p = input, state = base, lastchar = '\0'; *p != '\0'; lastchar = *p, p++) {
+    for (p = input, state = state_base, lastchar = '\0'; *p != '\0'; lastchar = *p, p++) {
 
         switch (state) {
-        case base:
+        case state_base:
             if (unlikely(*p == '\'')) {
-                state = instr;
+                state = state_instr;
                 current_string_length = 0;
                 *fp++ = *p;
             } else if ((*p == ':') && (*(p + 1) != ':') && (lastchar != ':')) {
                 bp = bindbuf;
-                state = bind;
+                state = state_bind;
                 *fp = '\0';
                 felt = linkedListElement_new(ns_strdup(fragbuf));
                 if(ftail == NULL) {
@@ -882,17 +882,17 @@ parse_bind_variables(const char *input,
             }
             break;
 
-        case instr:
+        case state_instr:
             if ((unlikely(*p == '\'')) && (lastchar != '\'' || current_string_length == 0)) {
-                state = base;
+                state = state_base;
             }
             current_string_length++;
             *fp++ = *p;
             break;
 
-        case bind:
+        case state_bind:
             if (unlikely(*p == '=')) {
-                state = base;
+                state = state_base;
                 bp = bindbuf;
                 fp = fragbuf;
             } else if (!(*p == '_' || *p == '$' || *p == '#' || CHARTYPE(alnum, *p) != 0)) {
@@ -904,7 +904,7 @@ parse_bind_variables(const char *input,
                     tail->next = elt;
                     tail = elt;
                 }
-                state = base;
+                state = state_base;
                 fp = fragbuf;
                 p--;
             } else {
@@ -914,7 +914,7 @@ parse_bind_variables(const char *input,
         }
     }
 
-    if (state == bind) {
+    if (state == state_bind) {
         *bp = '\0';
         elt = linkedListElement_new(ns_strdup(bindbuf));
         if (tail == NULL) {
