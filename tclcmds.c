@@ -1031,7 +1031,7 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, const char *lob_id)
 }
 
 /* ns_pg blob_select_file db blob_id filename
- * Write a pseudo-blob to the passed in temp file name.  Some of this
+ * Write a pseudo-blob to the passed in temp filename.  Some of this
  * shamelessly lifted from ora8.c.
  * DanW - This is just blob_write, except it doesn't send anything out the
  *        connection.
@@ -1342,7 +1342,7 @@ LinkedList_free_list (linkedListElement_t *head)
  * encode3() is a slight modification of the encoding scheme used by uuencode.
  * It's quite efficient, using four bytes for each three bytes in the input
  * stream.  There's a slight hitch in that apostrophe isn't legal in Postgres
- * strings.  The uuencoding algorithm doesn't make use of lower case letters,
+ * strings.  The uuencoding algorithm doesn't make use of lowercase letters,
  * though, so we just map them to 'a'.
  *
  * This is a real hack, that's for sure, but we do want to be able to pg_dump
