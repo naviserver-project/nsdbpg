@@ -842,7 +842,7 @@ parse_bind_variables(const char *input,
 {
     enum { state_base, state_instr, state_bind } state;
     const char  *p;
-    char        *bindbuf, *bp, *fragbuf, *fp, lastchar;
+    char        *bindbuf, *bp, *fragbuf, *fp, lastchar, nextchar;
     int          current_string_length = 0;
     size_t       inputLen;
     linkedListElement_t *elt,  *head=NULL,  *tail=NULL;
@@ -862,11 +862,14 @@ parse_bind_variables(const char *input,
 
         switch (state) {
         case state_base:
+            nextchar = *(p+1);
             if (unlikely(*p == '\'')) {
                 state = state_instr;
                 current_string_length = 0;
                 *fp++ = *p;
-            } else if ((*p == ':') && (*(p + 1) != ':') && (lastchar != ':')) {
+            } else if ((*p == ':')
+                       && (CHARTYPE(alnum, nextchar) != 0 || nextchar == '_')
+                       && (lastchar != ':')) {
                 bp = bindbuf;
                 state = state_bind;
                 *fp = '\0';
