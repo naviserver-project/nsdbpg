@@ -376,20 +376,37 @@ Exec(Ns_DbHandle *handle, const char *sql)
     Ns_DStringInit(&dsSql);
     Ns_DStringAppend(&dsSql, sql);
 
+    /*
+     * Trim spaces
+     */
     while (dsSql.length > 0 && CHARTYPE(space, dsSql.string[dsSql.length - 1]) != 0) {
         dsSql.string[--dsSql.length] = '\0';
     }
+    /*
+     * Make sure to end statement with a semicolon.
+     */
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
         Ns_DStringAppend(&dsSql, ";");
     }
     /*Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Querying '%s'", handle->poolname, dsSql.string);*/
+    /* {
+        Tcl_DString ds;
+        const char *encoded;
 
+        Tcl_DStringInit(&ds);
+        encoded = Tcl_UtfToExternalDString(NULL, dsSql.string, dsSql.length, &ds);
+
+        pconn->res = PQexec(pconn->pgconn, ds.string);
+        //  fprintf(stderr, "nsdbpg(%s): ENCODED Querying '%s'\n", handle->poolname, ds.string);
+        Tcl_DStringFree(&ds);
+        }*/
     pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
-    /* Set error result for exception message -- not sure that this
-       belongs here in DRB-improved driver..... but, here it is
-       anyway, as it can't really hurt anything :-) */
-
+    /*
+     * Set error result for exception message -- not sure that this
+     * belongs here in DRB-improved driver..... but, here it is
+     * anyway, as it can't really hurt anything :-)
+     */
     if (PQresultStatus(pconn->res) == PGRES_BAD_RESPONSE) {
         Ns_DStringAppend(&handle->dsExceptionMsg, "PGRES_BAD_RESPONSE ");
     }

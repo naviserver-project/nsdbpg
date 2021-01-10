@@ -1329,7 +1329,7 @@ LinkedList_len(const linkedListElement_t *head)
  */
 
 static void
-LinkedList_free_list (linkedListElement_t *head)
+LinkedList_free_list(linkedListElement_t *head)
 {
     linkedListElement_t *elt;
 
