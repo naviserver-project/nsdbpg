@@ -1,4 +1,3 @@
-
 What is this?
 ------------
 
@@ -26,8 +25,8 @@ How does it work?
 
 Driver modules look much like ordinary AOLserver modules but are
 loaded differently.  Instead of being listed with other modules in the
-[ns\server\<server-name>\modules] configuration section, a database
-driver is listed in the [ns\db\drivers] section and nsdb does
+[ns/server/<server-name>/modules] configuration section, a database
+driver is listed in the [ns/db/drivers] section and nsdb does
 the loading.  The database driver initialization function normally does
 little more than call the nsdb Ns_DbRegisterDriver() function with an
 array of pointers to functions.  The functions are then later used by
@@ -43,13 +42,13 @@ PostgreSQL connection in a Tcl script.
 
 Contributors to this file include:
 
-	Don Baccus		<dhogaza@pacifier.com>
-	Lamar Owen		<lamar.owen@wgcr.org>
-	Jan Wieck		<wieck@debis.com>
-	Keith Pasket		(SDL/USU)
-	Scott Cannon, Jr.	(SDL/USU)
+        Don Baccus		<dhogaza@pacifier.com>
+        Lamar Owen		<lamar.owen@wgcr.org>
+        Jan Wieck		<wieck@debis.com>
+        Keith Pasket		(SDL/USU)
+        Scott Cannon, Jr.	(SDL/USU)
         Dan Wickstrom           <danw@rtp.ericsson.se>
-	Scott S. Goodwin	<scott@scottg.net>
+        Scott S. Goodwin	<scott@scottg.net>
         Gustaf Neumann          <neumann@wu-wien.ac.at>
 
 Original example driver by Jim Davidson
@@ -68,13 +67,13 @@ db_name and db_user as set accordingly.
    ns_section ns/db/pool/pool1 {
        # ns_param	maxidle            0
        # ns_param	maxopen            0
-       ns_param	  connections        15
+       ns_param   connections        15
        ns_param   LogMinDuration     0.01   ;# when SQL logging is on, log only statements above this duration
-       ns_param	  logsqlerrors       true
-       ns_param	  driver             postgres
-       ns_param	  datasource         "${db_host}:${db_port}:dbname=${db_name}"
-       ns_param	  user               $db_user
-       ns_param	  password           ""
+       ns_param   logsqlerrors       true
+       ns_param   driver             postgres
+       ns_param   datasource         "${db_host}:${db_port}:dbname=${db_name}"
+       ns_param   user               $db_user
+       ns_param   password           ""
     }
 ===========================================================
 
@@ -83,7 +82,7 @@ PostgreSQL "conninfo" parameters can be added to the datasource.
 
 ===========================================================
     ...
-       ns_param	  datasource         "${db_host}:${db_port}:dbname=${db_name} sslmode=require"
+       ns_param   datasource         "${db_host}:${db_port}:dbname=${db_name} sslmode=require"
     ...
 ===========================================================
 
@@ -93,7 +92,7 @@ DEVELOPER'S GUIDE:
 
 Run 'make help' for developer information.
 
-The build step needs from PostgreSQL 
+The build step needs from PostgreSQL
  - the include file libpq-fe.h
  - the library libpq.*
 
