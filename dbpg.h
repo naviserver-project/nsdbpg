@@ -66,6 +66,7 @@ typedef struct Connection {
     int             nCols;
     int             nTuples;
     int             curTuple;
+    Ns_Time         transactionStartTime;
     bool            in_transaction;
 } Connection;
 
@@ -74,3 +75,12 @@ extern int Ns_PgServerInit(const char *server, const char *module, const char *d
 
 
 #endif /* DBPG_H */
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * indent-tabs-mode: nil
+ * End:
+ */
