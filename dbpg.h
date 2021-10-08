@@ -50,6 +50,7 @@
 #undef PACKAGE_STRING
 #undef PACKAGE_NAME
 #undef PACKAGE_BUGREPORT
+#undef PACKAGE_URL
 
 #include <nsdb.h>
 #include <libpq-fe.h>

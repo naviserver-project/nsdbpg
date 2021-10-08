@@ -490,6 +490,11 @@ Exec(Ns_DbHandle *handle, const char *sql)
 
     pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
 
+    /*
+     * The driver does not make use of PIPELINE processing, so we should not
+     * see the response codes for PGRES_PIPELINE_SYNC and
+     * PGRES_PIPELINE_ABORTED.
+     */
     switch(PQresultStatus(pconn->res)) {
     case PGRES_TUPLES_OK:
         handle->fetchingRows = NS_TRUE;
@@ -505,12 +510,16 @@ Exec(Ns_DbHandle *handle, const char *sql)
         /*pconn->nTuples = PQntuples(pconn->res);*/
         result = NS_DML;
         break;
-    case PGRES_BAD_RESPONSE:   /* fall through */
-    case PGRES_NONFATAL_ERROR: /* fall through */
-    case PGRES_EMPTY_QUERY:    /* fall through */
+    case PGRES_BAD_RESPONSE:   NS_FALL_THROUGH; /* fall through */
+    case PGRES_NONFATAL_ERROR: NS_FALL_THROUGH; /* fall through */
+    case PGRES_EMPTY_QUERY:    NS_FALL_THROUGH; /* fall through */
 #if defined(PG_VERSION_NUM) && PG_VERSION_NUM > 90100
-    case PGRES_COPY_BOTH:      /* fall through */
-    case PGRES_SINGLE_TUPLE:   /* fall through */
+    case PGRES_COPY_BOTH:      NS_FALL_THROUGH; /* fall through */
+    case PGRES_SINGLE_TUPLE:   NS_FALL_THROUGH; /* fall through */
+#endif
+#if defined(PG_VERSION_NUM) && PG_VERSION_NUM >= 140000
+    case PGRES_PIPELINE_SYNC:      NS_FALL_THROUGH; /* fall through */
+    case PGRES_PIPELINE_ABORTED:   NS_FALL_THROUGH; /* fall through */
 #endif
     case PGRES_FATAL_ERROR:
         Ns_Log(Error, "nsdbpg(%s): result status: %d message: %s",
