@@ -98,23 +98,23 @@ The build step needs from PostgreSQL
 
 Examples for a build operation:
 
-     export PG=/usr/local/pg13
+     export PG=/usr/local/pg14
      make PGLIB=$PG/lib PGINCLUDE=$PG/include
 
      make PGINCLUDE=/usr/include/postgresql
 
 To build/install on a non-standard path, use e.g.:
 
-     export PG=/usr/local/pg13
+     export PG=/usr/local/pg14
      make PGLIB=$PG/lib PGINCLUDE=$PG/include NAVISERVER=/opt/local/ns/
      make PGLIB=$PG/lib PGINCLUDE=$PG/include NAVISERVER=/opt/local/ns/ install
 
 Under MacPorts, you might use something like:
 
-     PGPATH=postgresql13 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
+     PGPATH=postgresql14 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
 
 For extended code checking via cppchek, one might use e.g.
 
-     PGPATH=postgresql13 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
+     PGPATH=postgresql14 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
 
 See the Makefile for further information on building this module.

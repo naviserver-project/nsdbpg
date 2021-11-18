@@ -69,6 +69,13 @@ static int LinkedList_len(const linkedListElement_t *head);
 
 static void LinkedList_free_list (linkedListElement_t *head);
 
+static linkedListElement_t *
+EncodedListElement(const char *msg, char *chars, int len, Tcl_DString *dsPtr)
+    NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(4);
+
+static void AppendEncoded(Tcl_DString *dsPtr, const char *value, int len, Tcl_DString *encDsPtr)
+    NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(4);
+
 static void parse_bind_variables(const char *input,
                                  linkedListElement_t **bind_variables,
                                  linkedListElement_t **fragments)
@@ -455,6 +462,26 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
     return TCL_OK;
 }
 
+
+static void AppendEncoded(Tcl_DString *dsPtr, const char *value, int len, Tcl_DString *encDsPtr)
+{
+    int encodedLength;
+
+    Tcl_UtfToExternalDString(NULL, value, len, encDsPtr);
+    encodedLength = encDsPtr->length;
+    //Ns_Log(Notice, "... appended value <%s>", encDsPtr->string);
+    Ns_DStringNAppend(dsPtr, Ns_DStringExport(encDsPtr), encodedLength);
+}
+
+static linkedListElement_t *
+EncodedListElement(const char *msg, char *chars, int len, Tcl_DString *dsPtr)
+{
+    (void)*msg;
+    (void) Tcl_UtfToExternalDString(NULL, chars, len, dsPtr);
+    // Ns_Log(Notice, "FRAGBUF %s len %d <%s>", msg, dsPtr->length, dsPtr->string);
+    return linkedListElement_new(Ns_DStringExport(dsPtr));
+}
+
 
 /*
  *----------------------------------------------------------------------
@@ -553,8 +580,6 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     }
     assert(sqlObj->typePtr == &ParsedSQLObjType);
 
-    sql = Tcl_GetString(sqlObj);
-
     parsedSQLptr = (ParsedSQL *)sqlObj->internalRep.twoPtrValue.ptr1;
     if (parsedSQLptr->nrFragments > 0 && parsedSQLptr->sql_fragments == NULL) {
         /*
@@ -568,7 +593,12 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
     sql_fragments = parsedSQLptr->sql_fragments;
     nrFragments = parsedSQLptr->nrFragments;
 
-    if (nrFragments > 0) {
+
+    if (nrFragments == 0) {
+        sql = sql_fragments ? sql_fragments->chars :  Tcl_GetString(sqlObj);
+        Ns_Log(Debug, "SQL without fragments <%s>", sql);
+
+    } else {
         dsPtr = &ds;
         Ns_DStringInit(dsPtr);
 
@@ -581,7 +611,11 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
              var_p != NULL || frag_p != NULL;) {
 
             if (frag_p != NULL) {
+                /*
+                 * The values in the fragments are already encoded.
+                 */
                 Ns_DStringAppend(dsPtr, frag_p->chars);
+                Ns_Log(Debug, "... appended encoded fragment <%s>", frag_p->chars);
                 frag_p = frag_p->next;
             }
 
@@ -594,7 +628,9 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                 if (value == NULL) {
                     Ns_TclPrintfResult(interp, "undefined variable '%s'",
                                        var_p->chars);
-                    if (dsPtr != NULL) { Ns_DStringFree(dsPtr); }
+                    if (dsPtr != NULL) {
+                        Ns_DStringFree(dsPtr);
+                    }
                     return TCL_ERROR;
                 }
 
@@ -605,7 +641,8 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                      */
                     Ns_DStringAppend(dsPtr, "NULL");
                 } else {
-                    int needEscapeStringSyntax = 0;
+                    int         needEscapeStringSyntax = 0;
+                    Tcl_DString encDs, *encDsPtr = &encDs;
 
                     /*
                      * Determine, if we need the SQL escape string syntax E'...'
@@ -634,13 +671,13 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                     for (p = value; *p != '\0'; p++) {
                         if (unlikely(*p == '\'')) {
                             if (likely(p > value)) {
-                                Ns_DStringNAppend(dsPtr, value, (int)(p - value));
+                                AppendEncoded(dsPtr, value, (int)(p - value), encDsPtr);
                             }
                             value = p;
                             Ns_DStringNAppend(dsPtr, "'", 1);
                         } else if (unlikely(*p == '\\')) {
                             if (likely(p > value)) {
-                                Ns_DStringNAppend(dsPtr, value, (int)(p - value));
+                                AppendEncoded(dsPtr, value, (int)(p - value), encDsPtr);
                             }
                             value = p;
                             Ns_DStringNAppend(dsPtr, "\\", 1);
@@ -648,7 +685,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
                     }
 
                     if (likely(p > value)) {
-                        Ns_DStringNAppend(dsPtr, value, (int)(p - value));
+                        AppendEncoded(dsPtr, value, (int)(p - value), encDsPtr);
                     }
 
                     Ns_DStringNAppend(dsPtr, "'", 1);
@@ -847,11 +884,13 @@ parse_bind_variables(const char *input,
     size_t       inputLen;
     linkedListElement_t *elt,  *head=NULL,  *tail=NULL;
     linkedListElement_t *felt, *fhead=NULL, *ftail=NULL;
+    Tcl_DString  ds;
 
     NS_NONNULL_ASSERT(input != NULL);
     NS_NONNULL_ASSERT(bind_variables != NULL);
     NS_NONNULL_ASSERT(fragments != NULL);
 
+    Tcl_DStringInit(&ds);
     inputLen = strlen(input);
     fragbuf = ns_malloc((inputLen + 1U) * sizeof(char));
     fp = fragbuf;
@@ -873,7 +912,8 @@ parse_bind_variables(const char *input,
                 bp = bindbuf;
                 state = state_bind;
                 *fp = '\0';
-                felt = linkedListElement_new(ns_strdup(fragbuf));
+                felt = EncodedListElement("nobind", fragbuf, (int)(fp - fragbuf), &ds);
+
                 if(ftail == NULL) {
                     fhead = ftail = felt;
                 } else {
@@ -900,7 +940,8 @@ parse_bind_variables(const char *input,
                 fp = fragbuf;
             } else if (!(*p == '_' || *p == '$' || *p == '#' || CHARTYPE(alnum, *p) != 0)) {
                 *bp = '\0';
-                elt = linkedListElement_new(ns_strdup(bindbuf));
+                elt = EncodedListElement("bind", bindbuf, (int)(bp - bindbuf), &ds);
+
                 if (tail == NULL) {
                     head = tail = elt;
                 } else {
@@ -919,7 +960,8 @@ parse_bind_variables(const char *input,
 
     if (state == state_bind) {
         *bp = '\0';
-        elt = linkedListElement_new(ns_strdup(bindbuf));
+        elt = EncodedListElement("bind", bindbuf, (int)(bp - bindbuf), &ds);
+
         if (tail == NULL) {
             head = elt;
             /*tail = elt;*/
@@ -928,8 +970,10 @@ parse_bind_variables(const char *input,
             /*tail = elt;*/
         }
     } else {
+
         *fp = '\0';
-        felt = linkedListElement_new(ns_strdup(fragbuf));
+        felt = EncodedListElement("nobind", fragbuf, (int)(fp - fragbuf), &ds);
+
         if (ftail == NULL) {
             fhead = felt;
             /*  ftail = felt; */
@@ -941,6 +985,8 @@ parse_bind_variables(const char *input,
 
     ns_free(fragbuf);
     ns_free(bindbuf);
+    Tcl_DStringFree(&ds);
+
     *bind_variables = head;
     *fragments      = fhead;
 

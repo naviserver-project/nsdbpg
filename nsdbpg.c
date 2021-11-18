@@ -388,18 +388,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
         Ns_DStringAppend(&dsSql, ";");
     }
-    /*Ns_Log(Ns_LogSqlDebug, "nsdbpg(%s): Querying '%s'", handle->poolname, dsSql.string);*/
-    /* {
-        Tcl_DString ds;
-        const char *encoded;
-
-        Tcl_DStringInit(&ds);
-        encoded = Tcl_UtfToExternalDString(NULL, dsSql.string, dsSql.length, &ds);
-
-        pconn->res = PQexec(pconn->pgconn, ds.string);
-        //  fprintf(stderr, "nsdbpg(%s): ENCODED Querying '%s'\n", handle->poolname, ds.string);
-        Tcl_DStringFree(&ds);
-        }*/
+    Ns_Log(Debug, "nsdbpg(%s): call PQexec with <%s>", handle->poolname, dsSql.string);
     pconn->res = PQexec(pconn->pgconn, dsSql.string);
 
     /*
@@ -593,7 +582,7 @@ GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
  *
  * GetRowCount --
  *
- *      Returns number of rows processed by the last SQL stetement
+ *      Returns number of rows processed by the last SQL statement
  *
  * Results:
  *      Numbe rof rows or NS_ERROR.
