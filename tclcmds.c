@@ -586,7 +586,9 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Ob
          * The obj was a result of a dup operation, we have to
          * reparse sql_fragments
          */
-        parse_bind_variables(sql, &parsedSQLptr->bind_variables, &parsedSQLptr->sql_fragments);
+        parse_bind_variables(Tcl_GetString(sqlObj),
+                             &parsedSQLptr->bind_variables,
+                             &parsedSQLptr->sql_fragments);
         parsedSQLptr->nrFragments = LinkedList_len(parsedSQLptr->bind_variables);
     }
     bind_variables = parsedSQLptr->bind_variables;
