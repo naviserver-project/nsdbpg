@@ -393,8 +393,12 @@ ParsedSQLFreeInternalRep(register Tcl_Obj *objPtr)	/* parsedSQL Tcl object with 
       parsedSQLptr->bind_variables
       );*/
 
-    if (parsedSQLptr->sql_fragments != NULL)  {LinkedList_free_list(parsedSQLptr->sql_fragments);}
-    if (parsedSQLptr->bind_variables != NULL) {LinkedList_free_list(parsedSQLptr->bind_variables);}
+    if (parsedSQLptr->sql_fragments != NULL)  {
+        LinkedList_free_list(parsedSQLptr->sql_fragments);
+    }
+    if (parsedSQLptr->bind_variables != NULL) {
+        LinkedList_free_list(parsedSQLptr->bind_variables);
+    }
 
     /*
      * ... and free structure
@@ -444,7 +448,7 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 
     /*
      * Parse the query string and find the bind variables.  Return
-     * the sql fragments so that the query can be rebuilt with the
+     * the SQL fragments so that the query can be rebuilt with the
      * bind variable values interpolated into the original query.
      */
     parse_bind_variables(sql, &srcPtr->bind_variables, &srcPtr->sql_fragments);
@@ -909,7 +913,7 @@ parse_bind_variables(const char *input,
                 current_string_length = 0;
                 *fp++ = *p;
             } else if ((*p == ':')
-                       && (CHARTYPE(alnum, nextchar) != 0 || nextchar == '_')
+                       && (CHARTYPE(alpha, nextchar) != 0 || nextchar == '_')
                        && (lastchar != ':')) {
                 bp = bindbuf;
                 state = state_bind;
