@@ -44,14 +44,14 @@ const char *pgDbName = "PostgreSQL";
  */
 
 static const char *DbType(Ns_DbHandle *handle);
-static Ns_ReturnCode OpenDb(Ns_DbHandle *handle);
-static Ns_ReturnCode CloseDb(Ns_DbHandle *handle);
-static Ns_Set *BindRow(Ns_DbHandle *handle);
-static int     Exec(Ns_DbHandle *handle, const char *sql);
-static int     GetRow(const Ns_DbHandle *handle, const Ns_Set *row);
-static int     GetRowCount(const Ns_DbHandle *handle);
-static Ns_ReturnCode Flush(const Ns_DbHandle *handle);
-static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle);
+static Ns_ReturnCode OpenDb(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static Ns_ReturnCode CloseDb(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static Ns_Set *BindRow(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static int     Exec(Ns_DbHandle *handle, const char *sql)  NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
+static int     GetRow(const Ns_DbHandle *handle, const Ns_Set *row) NS_GNUC_NONNULL(1);
+static int     GetRowCount(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static Ns_ReturnCode Flush(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
@@ -187,8 +187,10 @@ OpenDb(Ns_DbHandle *handle)
 {
     Ns_ReturnCode status = NS_OK;
 
-    if (handle == NULL || handle->datasource == NULL) {
-        Ns_Log(Error, "nsdbpg: Invalid handle.");
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->datasource == NULL) {
+        Ns_Log(Error, "nsdbpg(%s): Invalid handle", handle->poolname);
         status = NS_ERROR;
 
     } else {
@@ -269,8 +271,10 @@ static Ns_ReturnCode
 CloseDb(Ns_DbHandle *handle) {
     Ns_ReturnCode status = NS_OK;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "nsdbpg: invalid connection.");
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->connection == NULL) {
+        Ns_Log(Error, "nsdbpg(%s): invalid connection", handle->poolname);
         status = NS_ERROR;
 
     } else {
@@ -306,10 +310,12 @@ CloseDb(Ns_DbHandle *handle) {
 static Ns_Set *
 BindRow(Ns_DbHandle *handle)
 {
-    Ns_Set      *row = NULL;
+    Ns_Set *row = NULL;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "nsdbpg: Invalid connection.");
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->connection == NULL) {
+        Ns_Log(Error, "nsdbpg(%s): invalid connection", handle->poolname);
 
     } else if (!handle->fetchingRows) {
         Ns_Log(Error, "nsdbpg(%s): No rows waiting to bind.", handle->datasource);
@@ -361,12 +367,15 @@ Exec(Ns_DbHandle *handle, const char *sql)
     int          retry_count = 2;
     int          result = NS_ERROR;
 
-    if (sql == NULL) {
-        Ns_Log(Error, "nsdbpg: No SQL query.");
+    NS_NONNULL_ASSERT(handle != NULL);
+    NS_NONNULL_ASSERT(sql != NULL);
+
+    if (*sql == '\0') {
+        Ns_Log(Error, "nsdbpg(%s): No SQL query.", handle->poolname);
         return NS_ERROR;
     }
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "nsdbpg: No connection.");
+    if (handle->connection == NULL) {
+        Ns_Log(Error, "nsdbpg(%s): No connection", handle->poolname);
         return NS_ERROR;
     }
 
@@ -543,8 +552,10 @@ GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
 {
     int          result = NS_OK;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "nsdbpg(%s): No connection", handle->poolname);
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->connection == NULL) {
+        Ns_Log(Error, "nsdbpg(%s): No connection",handle->poolname);
         result = NS_ERROR;
 
     } else if (row == NULL) {
@@ -598,7 +609,9 @@ GetRowCount(const Ns_DbHandle *handle)
 {
     int result;
 
-    if (handle == NULL || handle->connection == NULL) {
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg(%s): No connection", handle->poolname);
         result = (int)NS_ERROR;
     } else {
@@ -630,7 +643,9 @@ Flush(const Ns_DbHandle *handle)
 {
     Ns_ReturnCode status = NS_OK;
 
-    if (handle == NULL || handle->connection == NULL) {
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg(%s): Invalid connection", handle->poolname);
         status = NS_ERROR;
 
@@ -668,7 +683,9 @@ ResetHandle(Ns_DbHandle *handle)
 {
     Ns_ReturnCode status = NS_OK;
 
-    if (handle == NULL || handle->connection == NULL) {
+    NS_NONNULL_ASSERT(handle != NULL);
+
+    if (handle->connection == NULL) {
         Ns_Log(Error, "nsdbpg(%s): Invalid connection", handle->poolname);
         status = NS_ERROR;
 
