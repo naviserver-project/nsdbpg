@@ -325,7 +325,9 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case StatusIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, (PQstatus(pconn->pgconn) == CONNECTION_OK ? (char*)"ok" : (char*)"bad"), TCL_STATIC);
+            Tcl_SetResult(interp, (PQstatus(pconn->pgconn) == CONNECTION_OK
+                                   ? (char*)"ok"
+                                   : (char*)"bad"), TCL_STATIC);
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
