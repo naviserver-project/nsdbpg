@@ -87,6 +87,43 @@ PostgreSQL "conninfo" parameters can be added to the datasource.
     ===========================================================
 
 
+Provided API:
+
+ - ns_pg_bind:
+
+   This is a variant of the "ns_db" API for evaluating PostgreSQL
+   statements, supporting bind variables (denoted in SQL statements
+   starting with a ":"). The values for the bind variables are either
+   from the ns_set provided via the "-bind" option or from the calling
+   environment.
+
+       ns_pg_bind dml     /handle/ -bind /bind/ /sql/
+       ns_pg_bind 1row    /handle/ -bind /bind/ /sql/
+       ns_pg_bind 0or1row /handle/ -bind /bind/ /sql/
+       ns_pg_bind select  /handle/ -bind /bind/ /sql/
+       ns_pg_bind exec    /handle/ -bind /bind/ /sql/
+
+ - ns_pg:
+
+   ns_pg is a variant of the "ns_db" API for directly interacting with
+   the PostgreSQL client library, including BLOB support (which is
+   probably outdated).
+
+       ns_pg blob_dml_file    /handle/ /blobId/ /filename/
+       ns_pg blob_get         /handle/ /blobId/
+       ns_pg blob_put         /handle/ /blobId/ /value/
+       ns_pg blob_select_file /handle/ /blobId/ /filename/
+       ns_pg blob_write       /handle/ /blobId/
+       ns_pg db               /handle/
+       ns_pg error            /handle/
+       ns_pg host             /handle/
+       ns_pg ntuples          /handle/
+       ns_pg number           /handle/
+       ns_pg options          /handle/
+       ns_pg pid              /handle/
+       ns_pg port             /handle/
+       ns_pg status           /handle/
+
 
 DEVELOPER'S GUIDE:
 

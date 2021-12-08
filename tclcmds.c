@@ -177,12 +177,14 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
     static const char *const subcmds[] = {
         "blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file",
         "db", "host", "options", "port", "number", "error", "status", "ntuples",
+        "pid",
         NULL
     };
 
     enum SubCmdIndices {
         BlobWriteIdx, BlobGetIdx, BlobPutIdx, BlobDmlFileIdx, BlobSelectFileIdx,
-        DbIdx, HostIdx, OptionsIdx, PortIdx, NumberIdx, ErrorIdx, StatusIdx, NtuplesIdx
+        DbIdx, HostIdx, OptionsIdx, PortIdx, NumberIdx, ErrorIdx, StatusIdx, NtuplesIdx,
+        PidIdx,
     };
 
     if (argc < 3) {
@@ -213,6 +215,15 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
     }
 
     switch (subcmd) {
+
+    case PidIdx:
+        if (argc == 3) {
+            Tcl_SetObjResult(interp, Tcl_NewIntObj(PQbackendPID(pconn->pgconn)));
+        } else {
+            Tcl_WrongNumArgs(interp, 2, argv, "handle");
+            result = TCL_ERROR;
+        }
+        break;
 
     case BlobWriteIdx:
         if (argc == 4) {
@@ -271,7 +282,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case DbIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, PQdb(pconn->pgconn), TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(PQdb(pconn->pgconn), -1));
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
@@ -280,7 +291,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case HostIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, PQhost(pconn->pgconn), TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(PQhost(pconn->pgconn), -1));
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
@@ -289,7 +300,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case OptionsIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, PQoptions(pconn->pgconn), TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(PQoptions(pconn->pgconn), -1));
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
@@ -298,7 +309,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case PortIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, PQport(pconn->pgconn), TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(PQport(pconn->pgconn), -1));
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
@@ -316,7 +327,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case ErrorIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, PQerrorMessage(pconn->pgconn), TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(PQerrorMessage(pconn->pgconn), -1));
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
@@ -325,9 +336,9 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
 
     case StatusIdx:
         if (argc == 3) {
-            Tcl_SetResult(interp, (PQstatus(pconn->pgconn) == CONNECTION_OK
-                                   ? (char*)"ok"
-                                   : (char*)"bad"), TCL_STATIC);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(PQstatus(pconn->pgconn) == CONNECTION_OK
+                                                      ? "ok"
+                                                      : "bad", -1));
         } else {
             Tcl_WrongNumArgs(interp, 2, argv, "handle");
             result = TCL_ERROR;
@@ -508,8 +519,8 @@ static void AppendExternal(Tcl_DString *dsPtr, const char *value, int len, Tcl_D
  *
  * ListElementExternal --
  *
- *      Return a ListElement with the content coverted to external (UTF-8).
- *      The last argument is used for termporary storage.
+ *      Return a ListElement with the content converted to external
+ *      (UTF-8).  The last argument is used for termporary storage.
  *
  * Results:
  *      None.
@@ -699,7 +710,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
  *
  * PgBindDmlObjCmd --
  *
- *      Implements "ns_pg_bind dml /db/ -bind /bind/ /sql/".
+ *      Implements "ns_pg_bind dml /handle/ -bind /bind/ /sql/".
  *
  * Results:
  *      A standard Tcl result.
@@ -749,7 +760,7 @@ PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *co
  *
  * PgBindOneRowObjCmd --
  *
- *      Implements "ns_pg_bind 1row /db/ -bind /bind/ /sql/".
+ *      Implements "ns_pg_bind 1row /handle/ -bind /bind/ /sql/".
  *
  * Results:
  *      A standard Tcl result.
@@ -803,7 +814,7 @@ PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
  *
  * PgBindZeroOrOneRowObjCmd --
  *
- *      Implements "ns_pg_bind 0or1row /db/ -bind /bind/ /sql/".
+ *      Implements "ns_pg_bind 0or1row /handle/ -bind /bind/ /sql/".
  *
  * Results:
  *      A standard Tcl result.
@@ -862,7 +873,7 @@ PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tc
  *
  * PgBindSelectObjCmd --
  *
- *      Implements "ns_pg_bind select /db/ -bind /bind/ /sql/".
+ *      Implements "ns_pg_bind select /handle/ -bind /bind/ /sql/".
  *
  * Results:
  *      A standard Tcl result.
@@ -916,7 +927,7 @@ PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
  *
  * PgBindExecObjCmd --
  *
- *      Implements "ns_pg_bind exec /db/ -bind /bind/ /sql/".
+ *      Implements "ns_pg_bind exec /handle/ -bind /bind/ /sql/".
  *
  * Results:
  *      A standard Tcl result.
@@ -973,7 +984,11 @@ PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *c
  *
  * PgBindObjCmd --
  *
- *      Implements "ns_pg_bind".
+ *      Implements "ns_pg_bind", a variant of the "ns_db" API for
+ *      evaluating PostgreSQL statements, supporting bind variables
+ *      (denoted in SQL statements starting with a ":"). The values for
+ *      the bind variables are either from the ns_set provided via the
+ *      "-bind" option or from the calling environment.
  *
  * Results:
  *      A standard Tcl result.

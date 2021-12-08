@@ -299,7 +299,7 @@ CloseDb(Ns_DbHandle *handle) {
  *      Retrieve the column names of the current result.
  *
  * Results:
- *      An Ns_Set whos keys are the names of columns, or NULL on error.
+ *      An Ns_Set where the keys are the names of columns, or NULL on error.
  *
  * Side effects:
  *      None.
