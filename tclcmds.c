@@ -184,8 +184,15 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
     enum SubCmdIndices {
         BlobWriteIdx, BlobGetIdx, BlobPutIdx, BlobDmlFileIdx, BlobSelectFileIdx,
         DbIdx, HostIdx, OptionsIdx, PortIdx, NumberIdx, ErrorIdx, StatusIdx, NtuplesIdx,
-        PidIdx,
+        PidIdx
     };
+
+    if (argc > 1) {
+        result = Tcl_GetIndexFromObj(interp, argv[1], subcmds, "ns_pg subcmd", 0, &subcmd);
+        if (result != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
 
     if (argc < 3) {
         Tcl_WrongNumArgs(interp, 1, argv, "subcmd handle ?args?");
@@ -209,10 +216,6 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *c
         return TCL_ERROR;
     }
 
-    result = Tcl_GetIndexFromObj(interp, argv[1], subcmds, "ns_pg subcmd", 0, &subcmd);
-    if (result != TCL_OK) {
-        return TCL_ERROR;
-    }
 
     switch (subcmd) {
 
