@@ -62,6 +62,8 @@ static Tcl_ObjCmdProc PgBindExecObjCmd;
 
 static Ns_TclTraceProc AddCmds;
 
+static const Tcl_ObjType *intTypePtr = NULL;
+
 static int DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
 
@@ -76,9 +78,6 @@ static linkedListElement_t *
 ListElementExternal(const char *msg, char *chars, int len, Tcl_DString *encDsPtr)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(4)
     NS_GNUC_RETURNS_NONNULL;
-
-static void AppendExternal(Tcl_DString *dsPtr, const char *value, int len, Tcl_DString *encDsPtr)
-    NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(4);
 
 static const char *SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString *dsPtr)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(3) NS_GNUC_NONNULL(4);
@@ -138,6 +137,10 @@ static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query,
 Ns_ReturnCode
 Ns_PgServerInit(const char *server, const char *UNUSED(module), const char *UNUSED(driver))
 {
+    intTypePtr = Tcl_GetObjType("int");
+    if (intTypePtr == NULL) {
+        Tcl_Panic("NsTclInitObjs: no int type");
+    }
     return Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
 }
 
@@ -490,36 +493,6 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
 /*
  *----------------------------------------------------------------------
  *
- * AppendExternal --
- *
- *      Append to the provided dsPtr the content of value as an external
- *      (UTF8) encoding. It will use the encDsPtr for temporary storage.
- *
- * Results:
- *      None.
- *
- * Side effects:
- *      Updates dsPtr content.
- *
- *----------------------------------------------------------------------
- */
-static void AppendExternal(Tcl_DString *dsPtr, const char *value, int len, Tcl_DString *encDsPtr)
-{
-    int encodedLength;
-
-    NS_NONNULL_ASSERT(dsPtr != NULL);
-    NS_NONNULL_ASSERT(value != NULL);
-    NS_NONNULL_ASSERT(encDsPtr != NULL);
-
-    Tcl_UtfToExternalDString(NULL, value, len, encDsPtr);
-    encodedLength = encDsPtr->length;
-    //Ns_Log(Notice, "... appended value <%s>", encDsPtr->string);
-    Ns_DStringNAppend(dsPtr, Ns_DStringExport(encDsPtr), encodedLength);
-}
-
-/*
- *----------------------------------------------------------------------
- *
  * ListElementExternal --
  *
  *      Return a ListElement with the content converted to external
@@ -555,7 +528,8 @@ ListElementExternal(const char *msg, char *chars, int len, Tcl_DString *encDsPtr
  * SqlObjToString --
  *
  *      Return a string (SQL command) with substituted bind variables in
- *      external encoding.
+ *      external encoding. When the command returns NULL, an error message is
+ *      set in the interpreter result.
  *
  * Results:
  *      Non-NULL SQL or NULL on failure.
@@ -584,6 +558,8 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                (sqlObj->typePtr != NULL) ? sqlObj->typePtr->name : "none",
                Tcl_GetString(sqlObj));
         if (Tcl_ConvertToType(interp, sqlObj, &ParsedSQLObjType) != TCL_OK) {
+            Ns_TclPrintfResult(interp,
+                               "provided SQL string cannot be converted to SQL type");
             return NULL;
         }
     } else {
@@ -612,6 +588,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
 
     } else {
         const linkedListElement_t *var_p, *frag_p;
+        Ns_ReturnCode              result = NS_OK;
 
         /*
          * Rebuild the query and substitute the actual Tcl variable values
@@ -619,8 +596,11 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
          */
 
         for (var_p = bind_variables, frag_p = sql_fragments;
-             var_p != NULL || frag_p != NULL;) {
-            const char *p, *value = NULL;
+             var_p != NULL || frag_p != NULL;
+             ) {
+            const char *p;
+            char       *value = NULL;
+            int         valueLength = -1;
 
             if (frag_p != NULL) {
                 /*
@@ -633,76 +613,138 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
 
             if (var_p != NULL) {
                 if (bindSet == NULL) {
-                    value = Tcl_GetVar2(interp, var_p->chars, NULL, 0);
+                    /*
+                     * The bind values have to be obtained directly from the
+                     * calling environment.
+                     */
+                    Tcl_Obj *valueObj;
+
+                    valueObj = Tcl_GetVar2Ex(interp, var_p->chars, NULL, 0);
+                    if (unlikely(valueObj == NULL)) {
+                        value = NULL;
+                    } else {
+                        value = Tcl_GetStringFromObj(valueObj, &valueLength);
+
+                        if (valueObj->typePtr == intTypePtr) {
+                            /*
+                             * Since we can trust the byterep, we can bypass
+                             * the costly string analysis and
+                             * Tcl_UtfToExternalDString check.
+                             */
+                            Tcl_DStringAppend(dsPtr, "'", 1);
+                            Tcl_DStringAppend(dsPtr, value, valueLength);
+                            Tcl_DStringAppend(dsPtr, "'", 1);
+                            /*fprintf(stderr, "bypass conversion for '%s'\n", value);*/
+
+                            var_p = var_p->next;
+                            continue;
+
+                            /*} else if (valueObj->typePtr != NULL) {
+                              fprintf(stderr, "can i bypeass conversion for '%s' with type %s?\n",
+                              var_p->chars, valueObj->typePtr->name);*/
+                        }
+                    }
+
                 } else {
-                    value = Ns_SetGet(bindSet, var_p->chars);
+                    /*
+                     * The bind values are provided explicitly via an ns_set.
+                     */
+                    value = (char *)Ns_SetGet(bindSet, var_p->chars);
+                    valueLength = strlen(value);
                 }
+
                 if (value == NULL) {
                     Ns_TclPrintfResult(interp, "undefined variable '%s'",
                                        var_p->chars);
-                    return NULL;
-                }
+                    result = NS_ERROR;
+                    break;
 
-                if ( *value == '\0' ) {
+                } else if ( *value == '\0' ) {
                     /*
-                     * DRB: If the Tcl variable contains the empty string, pass a NULL
-                     * as the value.
+                     * If the bind value is just an empty string, pass "NULL"
+                     * as the value for SQL.
                      */
                     Ns_DStringNAppend(dsPtr, "NULL", 4);
+                    var_p = var_p->next;
+                    continue;
 
                 } else {
-                    Tcl_DString encDs, *encDsPtr = &encDs;
+                    Tcl_DString  encDs, *encDsPtr = &encDs;
+                    const char  *encodedString;
+                    int          encodedLength;
+
+                    Tcl_UtfToExternalDString(NULL, value, valueLength, encDsPtr);
+                    encodedLength = encDsPtr->length;
+                    encodedString = encDsPtr->string;
+                    if (strlen(encodedString) < (size_t)encodedLength) {
+                        Ns_TclPrintfResult(interp,
+                                           "bind var '%s' contains NUL character",
+                                           var_p->chars);
+                        Tcl_DStringFree(encDsPtr);
+                        result = NS_ERROR;
+                        break;
+                    }
 
                     /*
-                     * Determine, if we need the SQL escape string syntax E'...'
+                     * Determine, if we need the SQL escape string syntax
+                     * E'...'. In both cases, we open the quotation of the
+                     * string here.
                      */
-                    if (likely(strchr(value, INTCHAR('\\')) == NULL)) {
+                    if (likely(strchr(encodedString, INTCHAR('\\')) == NULL)) {
                         Ns_DStringNAppend(dsPtr, "'", 1);
                     } else {
                         Ns_DStringNAppend(dsPtr, "E'", 2);
                     }
 
                     /*
-                     * DRB: We really only need to quote strings, but there is one benefit
-                     * to quoting numeric values as well.  A value like '35 union select...'
-                     * substituted for a legitimate value in a URL to "smuggle" SQL into a
-                     * script will cause a string-to-integer conversion error within Postgres.
-                     * This conversion is done before optimization of the query, so indices are
-                     * still used when appropriate.
+                     * We really only need to quote strings, but there is one
+                     * benefit to quoting numeric values as well.  A value
+                     * like '35 union select...'  substituted for a legitimate
+                     * value in a URL to "smuggle" SQL into a script will
+                     * cause a string-to-integer conversion error within
+                     * Postgres.  This conversion is done before optimization
+                     * of the query, so indices are still used when
+                     * appropriate.
+                     *
+                     * We need to double-quote quotes and escape backslashes
+                     * inside the value.
                      */
-
-                    /*
-                     * We need to double-quote quotes and
-                     * escape backslashes inside the value.
-                     */
-                    for (p = value; *p != '\0'; p++) {
+                    for (p = encodedString; *p != '\0'; p++) {
                         if (unlikely(*p == '\'')) {
-                            if (likely(p > value)) {
-                                AppendExternal(dsPtr, value, (int)(p - value), encDsPtr);
+                            if (likely(p > encodedString)) {
+                                Ns_DStringNAppend(dsPtr, encodedString, (int)(p - encodedString));
                             }
-                            value = p;
+                            encodedString = p;
                             Ns_DStringNAppend(dsPtr, "'", 1);
                         } else if (unlikely(*p == '\\')) {
-                            if (likely(p > value)) {
-                                AppendExternal(dsPtr, value, (int)(p - value), encDsPtr);
+                            if (likely(p > encodedString)) {
+                                Ns_DStringNAppend(dsPtr, encodedString, (int)(p - encodedString));
                             }
-                            value = p;
+                            encodedString = p;
                             Ns_DStringNAppend(dsPtr, "\\", 1);
                         }
                     }
 
-                    if (likely(p > value)) {
-                        AppendExternal(dsPtr, value, (int)(p - value), encDsPtr);
+                    if (likely(p > encodedString)) {
+                        Ns_DStringNAppend(dsPtr, encodedString, (int)(p - encodedString));
                     }
-
+                    /*
+                     * Terminate the quoted value.
+                     */
                     Ns_DStringNAppend(dsPtr, "'", 1);
+
+                    Tcl_DStringFree(encDsPtr);
                 }
                 var_p = var_p->next;
             }
         }
-
-        sql = Ns_DStringValue(dsPtr);
+        if (result == NS_OK) {
+            sql = Ns_DStringValue(dsPtr);
+        } else {
+            sql = NULL;
+        }
     }
+    //Ns_Log(Notice, "final SQL <%s>", sql);
 
     return sql;
 }
@@ -752,6 +794,8 @@ PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *co
             if (Ns_DbDML(handle, sql) != NS_OK) {
                 result = DbFail(interp, handle, "dml", sql);
             }
+        } else {
+            result = TCL_ERROR;
         }
         Tcl_DStringFree(&ds);
     }
@@ -806,6 +850,8 @@ PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
             } else {
                 (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
             }
+        } else {
+            result = TCL_ERROR;
         }
         Tcl_DStringFree(&ds);
     }
@@ -865,6 +911,9 @@ PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tc
                     (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_DYNAMIC);
                 }
             }
+        } else {
+            result = TCL_ERROR;
+
         }
         Tcl_DStringFree(&ds);
     }
@@ -919,6 +968,8 @@ PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
             } else {
                 (void)Ns_TclEnterSet(interp, rowPtr, NS_TCL_SET_STATIC);
             }
+        } else {
+            result = TCL_ERROR;
         }
         Tcl_DStringFree(&ds);
     }
@@ -976,6 +1027,8 @@ PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *c
             default:
                 result = DbFail(interp, handle, "exec", sql);
             }
+        } else {
+            result = TCL_ERROR;
         }
         Tcl_DStringFree(&ds);
     }
