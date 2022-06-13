@@ -14,7 +14,6 @@ Date:   2022-02-05
     
     This value is explicitly forbidden in text strings passed to PostgreSQL.
 
-M	ChangeLog
 M	tclcmds.c
 
 commit 28fa1669204dbb5b41d12b6df595f4bc3333f3f2
@@ -209,14 +208,6 @@ Date:   2020-05-08
 
 M	tclcmds.c
 
-commit 0589acbd414ca04a6d7f25adf3957b7c07f53cf6
-Author: Gustaf Neumann <neumann@wu-wien.ac.at>
-Date:   2019-12-13
-
-    improve spelling
-
-M	ChangeLog
-
 commit a5008fecb0d362372aa38f06546cc46706692ef4
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2019-12-13
@@ -243,14 +234,6 @@ Date:   2019-05-06
 
 M	nsdbpg.c
 M	tclcmds.c
-
-commit 3184e88903d9e57786a1a6e1ad661cc4af3b238e
-Author: Gustaf Neumann <neumann@wu-wien.ac.at>
-Date:   2019-04-18
-
-    update changelog
-
-M	ChangeLog
 
 commit a5a6ae56a78941180ed232f1a7f27664a14f3629
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
@@ -283,14 +266,6 @@ Date:   2018-10-11
     add sample configuration section, including hints how to use SSL connections to the database
 
 M	README
-
-commit f882bf577eb4eeb5a21de809b9fab701b838dbf1
-Author: Gustaf Neumann <neumann@wu-wien.ac.at>
-Date:   2018-10-11
-
-    Improve spelling
-
-M	ChangeLog
 
 commit f87f084df3ae859ea99c06b22f4a2b6b9e43dff0
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
@@ -669,14 +644,6 @@ Date:   2016-01-17
     - fix confict on prototpyes
 
 M	tclcmds.c
-
-commit 81e4bde8ec1e443b70afad46640ac576d7324f2c
-Author: Gustaf Neumann <neumann@wu-wien.ac.at>
-Date:   2016-01-10
-
-    - updated ChangeLog
-
-M	ChangeLog
 
 commit a093456b9c858e833858a5d060c5bfe44d848112
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
@@ -1064,7 +1031,6 @@ Date:   2013-05-25
 
     - updated Changelog and README files
 
-M	ChangeLog
 M	README
 
 commit dce92e0f7c8c3ee14389ac960382697b65bdef2e
@@ -1145,14 +1111,6 @@ Date:   2012-01-07
 M	nsdbpg.c
 M	tclcmds.c
 
-commit 89748eda42fd045b381339e6589af05be0567b2b
-Author: Gustaf Neumann <neumann@wu-wien.ac.at>
-Date:   2011-07-12
-
-    Updated ChangeLog
-
-M	ChangeLog
-
 commit c24836eae732c648fd7d5d4d984ee94a0e907695
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2011-07-06
@@ -1168,7 +1126,6 @@ Date:   2008-08-28
 
     Implement new DbFn_GetRowCount API
 
-M	ChangeLog
 M	nsdbpg.c
 
 commit 1f7a45e2bf3c42425ee5f116f06f7641b1610ca9
@@ -1228,7 +1185,6 @@ Date:   2005-08-08
 
     Use new style ns_strdup etc. functions inplace of depreciated Ns_* functions
 
-M	ChangeLog
 M	tclcmds.c
 
 commit 598b9f5d13eee0965b7dcdccba358f6ca3f3f739
@@ -1237,7 +1193,6 @@ Date:   2005-08-01
 
     Use Ns_TclRegisterTrace inplace of depreciated Ns_TclInitInterps
 
-M	ChangeLog
 M	tclcmds.c
 
 commit 6d0498f17bd34d26b0f8f031f2a8e5c2cbf68451
@@ -1255,7 +1210,6 @@ Date:   2005-06-17
 
     Remove undefined PgDbServerInit
 
-M	ChangeLog
 M	nsdbpg.c
 
 commit bc0192d7b1c7630494aafc36d73645761d670f33
@@ -1264,7 +1218,6 @@ Date:   2005-06-16
 
     Use a regular naming scheme for functions and variables
 
-M	ChangeLog
 M	dbpg.h
 M	nsdbpg.c
 M	tclcmds.c
@@ -1288,7 +1241,6 @@ Date:   2005-06-15
     
     * Makefile: Remove all the crud.
 
-M	ChangeLog
 M	Makefile
 A	dbpg.h
 M	nsdbpg.c
@@ -1301,7 +1253,6 @@ Date:   2008-11-21
 
     Initial import of AOLserver nspostgres to naviserver nsdbpg
 
-M	ChangeLog
 M	Makefile
 R099	nspostgres.c	nsdbpg.c
 R100	nspostgres.h	nsdbpg.h
@@ -1336,7 +1287,6 @@ Date:   2004-03-29
 
     Build fixes: add -lnsdb to MODLIBS; link to openssl with OPENSSL=/path/to/ssl
 
-M	ChangeLog
 M	Makefile
 
 commit 29584f7532ef7936aa4b795bc7e1485307278ac4
@@ -1346,7 +1296,6 @@ Date:   2004-02-04
     Roll the 4.0 tag and tarball
 
 M	.hgtags
-M	ChangeLog
 M	README
 
 commit 8bfb545cbc1a81d5f32f44b955a90827ea8b6ff5
@@ -1355,7 +1304,6 @@ Date:   2003-10-02
 
     Remove extra space from check-env make target
 
-M	ChangeLog
 M	Makefile
 
 commit 0419923ba580b6d994a877c0c325ef2f49d73446
@@ -1364,7 +1312,6 @@ Date:   2003-09-27
 
     Add conditional for compiling for AOLserver 4 for -lnsdb
 
-M	ChangeLog
 M	Makefile
 
 commit e3a85cf79fcd68d02586ce323a46f21b771fbbec
@@ -1374,14 +1321,6 @@ Date:   2003-06-28
     Set db exception on error in exec in addition to logging
 
 M	nspostgres.c
-
-commit e6469cd772e553fd9f9ea579eb57fb81370d5a37
-Author: Lamar Owen <lamar.owen@wgcr.org>
-Date:   2003-02-17
-
-    Prepare for 4.0beta1 tag and release
-
-M	ChangeLog
 
 commit eea6098a84126db267c27f6648a13d7ba64d93a4
 Author: Lamar Owen <lamar.owen@wgcr.org>
@@ -1393,7 +1332,6 @@ Date:   2003-01-09
     out of ns.h (AOLserver 3 had merged it in; AS 2.3.3 had it split). This
     driver now compiles with AOLserver 4.
 
-M	ChangeLog
 M	nspostgres.h
 
 commit 7488f06eceae550620421e77ec363827e4bc647c
@@ -1403,7 +1341,6 @@ Date:   2002-12-24
     Tag and release version 3.5
 
 A	.hgtags
-M	ChangeLog
 
 commit f458b9c0b05c8029a3af32a39e697574a74821e7
 Author: Lamar Owen <lamar.owen@wgcr.org>
@@ -1411,7 +1348,6 @@ Date:   2002-12-16
 
     Update some comments; remove changelog from header; update list of contributors
 
-M	ChangeLog
 M	README
 M	nspostgres.c
 M	nspostgres.h
@@ -1438,7 +1374,6 @@ Date:   2002-12-13
 
     Add 'make help' for developers
 
-M	ChangeLog
 M	Makefile
 R097	readme.txt	README
 
@@ -1456,26 +1391,9 @@ Date:   2002-12-13
 
     Overwrote what's here with the latest OpenACS version, update Makefile
 
-M	ChangeLog
 M	Makefile
 M	nspostgres.c
 M	nspostgres.h
-
-commit eead830b05224df162f7c75c7f9d0e944e349a4a
-Author: Scott S. Goodwin <scott@scottg.net>
-Date:   2002-09-29
-
-    Don Baccus is taking over this tree; tagging this point as "pre-don"
-
-M	ChangeLog
-
-commit 4fee7f93515634da12369ba5ef93104c994aa9cd
-Author: Scott S. Goodwin <scott@scottg.net>
-Date:   2002-07-01
-
-    Fix file permisions
-
-M	ChangeLog
 
 commit 8cea01190b5670528696f5b12be81df5792f1c9a
 Author: Scott S. Goodwin <scott@scottg.net>
@@ -1485,16 +1403,7 @@ Date:   2002-06-02
     
     Remove TODO file
 
-M	ChangeLog
 M	nspostgres.c
-
-commit cd71a709bfba0f19d0e0ee4225d65ea3d68175a2
-Author: Scott S. Goodwin <scott@scottg.net>
-Date:   2001-12-14
-
-    Add a TODO file
-
-M	ChangeLog
 
 commit 6f58bcec655b4a745044e9c3a89d1a13cf8d52d2
 Author: Scott S. Goodwin <scott@scottg.net>
@@ -1504,7 +1413,6 @@ Date:   2001-12-03
     
     Haven't populated most of the comments yet :)
 
-M	ChangeLog
 M	nspostgres.c
 
 commit 0f4174408294ca8bbf76ae21d6183f290e6d4f6e
@@ -1513,7 +1421,6 @@ Date:   2001-09-29
 
     nspostgres.h: split out from nspostgres.c
 
-M	ChangeLog
 A	nspostgres.h
 
 commit 8a64b21dc90ee0bdc1b3f1d1282890fe49a9c9f5
@@ -1527,7 +1434,6 @@ Date:   2001-09-29
     file is loaded when the nspostgres.so module is loaded. I'm not sure
     how that works. Now, libpq.a is being used.
 
-M	ChangeLog
 M	Makefile
 M	nspostgres.c
 
@@ -1548,7 +1454,6 @@ Date:   2001-09-09
     
     make install POSTGRES=/your/path INST=/where/aolserver/is
 
-M	ChangeLog
 M	Makefile
 
 commit bc06028a34d35c65259330fcf46979c251f1f9c9
@@ -1557,7 +1462,6 @@ Date:   2001-09-09
 
     Accept POSTGRES=/your/postgres/path; expect NSHOME to be ../aolserver
 
-M	ChangeLog
 M	Makefile
 
 commit a78d65feac5d3387e6bdefc369c85fb67629cd9f
@@ -1566,7 +1470,6 @@ Date:   2001-09-05
 
     Initial revision
 
-A	ChangeLog
 A	Makefile
 A	nspostgres.c
 A	readme.txt
