@@ -650,7 +650,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                      * The bind values are provided explicitly via an ns_set.
                      */
                     value = (char *)Ns_SetGet(bindSet, var_p->chars);
-                    valueLength = strlen(value);
+                    valueLength = (int)strlen(value);
                 }
 
                 if (value == NULL) {
