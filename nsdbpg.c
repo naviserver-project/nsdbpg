@@ -48,7 +48,7 @@ static Ns_ReturnCode OpenDb(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode CloseDb(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_Set *BindRow(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static int     Exec(Ns_DbHandle *handle, const char *sql)  NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
-static int     GetRow(const Ns_DbHandle *handle, const Ns_Set *row) NS_GNUC_NONNULL(1);
+static int     GetRow(const Ns_DbHandle *handle, Ns_Set *row) NS_GNUC_NONNULL(1);
 static int     GetRowCount(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode Flush(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
@@ -333,7 +333,13 @@ BindRow(Ns_DbHandle *handle)
             row = handle->row;
 
             for (i = 0; i < pconn->nCols; i++) {
-                (void)Ns_SetPut(row, PQfname(pconn->res, i), NULL);
+                /*Ns_Log(Notice, "nsdbpg(%s): col[%d] %s size %d type %d",
+                       handle->datasource, i,
+                       PQfname(pconn->res, i),
+                       PQfsize(pconn->res, i),
+                       PQftype(pconn->res, i)
+                       );*/
+                (void)Ns_SetPutSz(row, PQfname(pconn->res, i), -1, NULL, 0);
             }
         }
         handle->fetchingRows = NS_FALSE;
@@ -548,7 +554,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
  */
 
 static int
-GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
+GetRow(const Ns_DbHandle *handle, Ns_Set *row)
 {
     int          result = NS_OK;
 
@@ -578,10 +584,23 @@ GetRow(const Ns_DbHandle *handle, const Ns_Set *row)
 
         } else {
             size_t i;
-
+#ifdef NS_SET_SINGLE_BLOCK
+            Ns_SetClearValues(row);
+#endif
             for (i = 0u; i < (size_t)pconn->nCols; i++) {
-                Ns_SetPutValue(row, i, PQgetvalue(pconn->res, pconn->curTuple, (int)i));
+                /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu '%s' PQgetlength %d",
+                       handle->poolname, i,  PQgetvalue(pconn->res, pconn->curTuple, (int)i),
+                       PQgetlength(pconn->res, pconn->curTuple, (int)i));*/
+                Ns_SetPutValueSz(row, i,
+                                 PQgetvalue(pconn->res, pconn->curTuple, (int)i),
+                                 PQgetlength(pconn->res, pconn->curTuple, (int)i));
             }
+#ifdef NS_SET_DEBUG
+            Ns_Log(Notice, "nsdbpg(%s): GetRow set %p size %lu maxsize %lu data len %d avail %d DONE",
+                   handle->poolname,
+                   (void*)row, row->size, row->maxSize,
+                   row->data.length, row->data.spaceAvl);
+#endif
             pconn->curTuple++;
         }
     }
