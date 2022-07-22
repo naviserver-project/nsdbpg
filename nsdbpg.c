@@ -584,9 +584,8 @@ GetRow(const Ns_DbHandle *handle, Ns_Set *row)
 
         } else {
             size_t i;
-#ifdef NS_SET_DSTRING
+
             Ns_SetClearValues(row, 4096);
-#endif
             for (i = 0u; i < (size_t)pconn->nCols; i++) {
                 /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu '%s' PQgetlength %d",
                        handle->poolname, i,  PQgetvalue(pconn->res, pconn->curTuple, (int)i),
