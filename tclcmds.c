@@ -673,7 +673,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                     const char  *encodedString;
                     int          encodedLength;
 
-                    Tcl_UtfToExternalDString(NULL, value, valueLength, encDsPtr);
+                    (void)Tcl_UtfToExternalDString(NULL, value, valueLength, encDsPtr);
                     encodedLength = encDsPtr->length;
                     encodedString = encDsPtr->string;
                     if (strlen(encodedString) < (size_t)encodedLength) {
