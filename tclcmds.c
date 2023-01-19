@@ -52,13 +52,14 @@ typedef struct linkedListElement_t {
  * Local functions defined in this file.
  */
 
-static Tcl_ObjCmdProc PgObjCmd;
-static Tcl_ObjCmdProc PgBindObjCmd;
 static Tcl_ObjCmdProc PgBindDmlObjCmd;
-static Tcl_ObjCmdProc PgBindOneRowObjCmd;
-static Tcl_ObjCmdProc PgBindZeroOrOneRowObjCmd;
-static Tcl_ObjCmdProc PgBindSelectObjCmd;
 static Tcl_ObjCmdProc PgBindExecObjCmd;
+static Tcl_ObjCmdProc PgBindObjCmd;
+static Tcl_ObjCmdProc PgBindOneRowObjCmd;
+static Tcl_ObjCmdProc PgBindSelectObjCmd;
+static Tcl_ObjCmdProc PgBindZeroOrOneRowObjCmd;
+static Tcl_ObjCmdProc PgObjCmd;
+static Tcl_ObjCmdProc PgPrepareObjCmd;
 
 static Ns_TclTraceProc AddCmds;
 
@@ -149,6 +150,7 @@ AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
     (void)Tcl_CreateObjCommand(interp, "ns_pg",      PgObjCmd,     NULL, NULL);
     (void)Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
+    (void)Tcl_CreateObjCommand(interp, "ns_pg_prepare", PgPrepareObjCmd, NULL, NULL);
 
     return NS_OK;
 }
@@ -496,7 +498,7 @@ ParsedSQLSetFromAny(Tcl_Interp *UNUSED(interp),
  * ListElementExternal --
  *
  *      Return a ListElement with the content converted to external
- *      (UTF-8).  The last argument is used for termporary storage.
+ *      (UTF-8).  The last argument is used for temporary storage.
  *
  * Results:
  *      None.
@@ -529,7 +531,7 @@ ListElementExternal(const char *msg, char *chars, int len, Tcl_DString *encDsPtr
  *
  *      Return a string (SQL command) with substituted bind variables in
  *      external encoding. When the command returns NULL, an error message is
- *      set in the interpreter result.
+ *      left in the interpreter result.
  *
  * Results:
  *      Non-NULL SQL or NULL on failure.
@@ -1097,6 +1099,102 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int objc, Tcl_Ob
         Ns_DStringFree(&handle->dsExceptionMsg);
         handle->cExceptionCode[0] = '\0';
         result = Ns_SubcmdObjv(subcmds, (ClientData)handle, interp, objc, objv);
+    }
+    return result;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * PgPrepareObjCmd --
+ *
+ *      Implements "ns_pg_prepare /sql/".
+ *
+ * Results:
+ *      A standard Tcl result.
+ *
+ * Side effects:
+ *      Depends on subcommand.
+ *
+ *----------------------------------------------------------------------
+ */
+static int
+PgPrepareObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+{
+    Tcl_Obj        *sqlObj;
+    int             result = TCL_OK;
+    Ns_ObjvSpec     args[] = {
+        {"sql",    Ns_ObjvObj, &sqlObj, NULL},
+        {NULL, NULL, NULL, NULL}
+    };
+
+    if (Ns_ParseObjv(NULL, args, interp, 1, objc, objv) != NS_OK) {
+        result = TCL_ERROR;
+
+    } else {
+        Tcl_DString                ds, *dsPtr = &ds, varDs, *varDsPtr = &varDs;
+        linkedListElement_t       *bind_variables, *sql_fragments;
+        const linkedListElement_t *var_p, *frag_p;
+        Tcl_Obj                   *dictObj = Tcl_NewDictObj();
+        Tcl_Obj                   *namesObj = Tcl_NewListObj(0, NULL);
+        int                        varCount = 0;
+
+        Tcl_DStringInit(dsPtr);
+        Tcl_DStringInit(varDsPtr);
+        Ns_DStringNAppend(varDsPtr, ":", 1);
+
+        parse_bind_variables(Tcl_GetString(sqlObj),
+                             &bind_variables,
+                             &sql_fragments);
+
+        for (var_p = bind_variables, frag_p = sql_fragments;
+             var_p != NULL || frag_p != NULL;
+             ) {
+
+            if (frag_p != NULL) {
+                Ns_DStringNAppend(dsPtr, frag_p->chars, frag_p->length);
+                frag_p = frag_p->next;
+            }
+
+            if (var_p != NULL) {
+                char   buf[TCL_INTEGER_SPACE + 2];
+                int    bufLen;
+
+                /*
+                 * Append substitution variables in the SQL body
+                 */
+                bufLen = snprintf(buf, sizeof(buf), "$%d", ++varCount);
+                Ns_DStringNAppend(dsPtr, buf, bufLen);
+                /*
+                 * Return the names of the substituted variables for the
+                 * signature of the prepared statement.
+                 */
+                Ns_DStringNAppend(varDsPtr, var_p->chars, var_p->length);
+                Tcl_ListObjAppendElement(interp, namesObj,
+                                         Tcl_NewStringObj(varDsPtr->string, varDsPtr->length));
+                Tcl_DStringSetLength(varDsPtr, 1);
+                var_p = var_p->next;
+            }
+        }
+
+        /*
+         * Return a dict with the keys "sql" and "args".
+         */
+        (void) Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("sql", 3),
+                              Tcl_NewStringObj(dsPtr->string, dsPtr->length));
+        (void) Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("args", 4),
+                              namesObj);
+        Tcl_SetObjResult(interp, dictObj);
+
+        Tcl_DStringFree(dsPtr);
+        Tcl_DStringFree(varDsPtr);
+
+        if (sql_fragments != NULL)  {
+            LinkedList_free_list(sql_fragments);
+        }
+        if (bind_variables != NULL) {
+            LinkedList_free_list(bind_variables);
+        }
     }
     return result;
 }
