@@ -614,7 +614,7 @@ GetRow(const Ns_DbHandle *handle, Ns_Set *row)
  *      Returns number of rows processed by the last SQL statement
  *
  * Results:
- *      Numbe rof rows or NS_ERROR.
+ *      Number of rows or NS_ERROR.
  *
  * Side effects:
  *      None
