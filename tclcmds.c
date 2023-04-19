@@ -52,14 +52,14 @@ typedef struct linkedListElement_t {
  * Local functions defined in this file.
  */
 
-static Tcl_ObjCmdProc PgBindDmlObjCmd;
-static Tcl_ObjCmdProc PgBindExecObjCmd;
-static Tcl_ObjCmdProc PgBindObjCmd;
-static Tcl_ObjCmdProc PgBindOneRowObjCmd;
-static Tcl_ObjCmdProc PgBindSelectObjCmd;
-static Tcl_ObjCmdProc PgBindZeroOrOneRowObjCmd;
-static Tcl_ObjCmdProc PgObjCmd;
-static Tcl_ObjCmdProc PgPrepareObjCmd;
+static TCL_OBJCMDPROC_T PgBindDmlObjCmd;
+static TCL_OBJCMDPROC_T PgBindExecObjCmd;
+static TCL_OBJCMDPROC_T PgBindObjCmd;
+static TCL_OBJCMDPROC_T PgBindOneRowObjCmd;
+static TCL_OBJCMDPROC_T PgBindSelectObjCmd;
+static TCL_OBJCMDPROC_T PgBindZeroOrOneRowObjCmd;
+static TCL_OBJCMDPROC_T PgObjCmd;
+static TCL_OBJCMDPROC_T PgPrepareObjCmd;
 
 static Ns_TclTraceProc AddCmds;
 
@@ -148,9 +148,9 @@ Ns_PgServerInit(const char *server, const char *UNUSED(module), const char *UNUS
 static Ns_ReturnCode
 AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
-    (void)Tcl_CreateObjCommand(interp, "ns_pg",      PgObjCmd,     NULL, NULL);
-    (void)Tcl_CreateObjCommand(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
-    (void)Tcl_CreateObjCommand(interp, "ns_pg_prepare", PgPrepareObjCmd, NULL, NULL);
+    (void)TCL_CREATEOBJCOMMAND(interp, "ns_pg",      PgObjCmd,     NULL, NULL);
+    (void)TCL_CREATEOBJCOMMAND(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
+    (void)TCL_CREATEOBJCOMMAND(interp, "ns_pg_prepare", PgPrepareObjCmd, NULL, NULL);
 
     return NS_OK;
 }
@@ -1119,7 +1119,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int objc, Tcl_Ob
  *----------------------------------------------------------------------
  */
 static int
-PgPrepareObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
 {
     Tcl_Obj        *sqlObj;
     int             result = TCL_OK;
