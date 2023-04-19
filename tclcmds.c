@@ -37,6 +37,17 @@
 #include "dbpg.h"
 
 /*
+ * Forward compatibility, in case a new version of the module is compiled
+ * against an old version of NaviServer.
+ */
+#ifndef TCL_OBJC_T
+# define TCL_SIZE_T           int
+# define TCL_OBJC_T           int
+# define TCL_OBJCMDPROC_T     Tcl_ObjCmdProc
+# define TCL_CREATEOBJCOMMAND Tcl_CreateObjCommand
+#endif
+
+/*
  * The following structure defines a linked list of strings
  * for parsing SQL statements.
  */
@@ -173,7 +184,7 @@ AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
  */
 
 static int
-PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T argc, Tcl_Obj *const argv[])
 {
     Ns_DbHandle      *handle;
     const Connection *pconn;
@@ -768,7 +779,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
  *----------------------------------------------------------------------
  */
 static int
-PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -820,7 +831,7 @@ PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *co
  *----------------------------------------------------------------------
  */
 static int
-PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -876,7 +887,7 @@ PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
  *----------------------------------------------------------------------
  */
 static int
-PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -938,7 +949,7 @@ PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tc
  *----------------------------------------------------------------------
  */
 static int
-PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -994,7 +1005,7 @@ PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
  *----------------------------------------------------------------------
  */
 static int
-PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -1058,7 +1069,7 @@ PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *c
  */
 
 int
-PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     char        *handleString = (char*)NS_EMPTY_STRING;
     Ns_DbHandle *handle;
@@ -1119,7 +1130,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int objc, Tcl_Ob
  *----------------------------------------------------------------------
  */
 static int
-PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, int objc, Tcl_Obj *const* objv)
+PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
 {
     Tcl_Obj        *sqlObj;
     int             result = TCL_OK;
