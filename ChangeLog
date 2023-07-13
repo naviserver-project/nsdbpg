@@ -1,3 +1,75 @@
+commit 5b600cae17adf6797b8066b9903a08621eccdb0e
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-04-19
+
+    provide support for compiling new version of the module against old versions of NaviServer
+
+M	tclcmds.c
+
+commit 56c7f3e841f42b9d23c2cbf406a539ca1cd9446d
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-04-19
+
+    Added support for TIP 627, 64bit object counts
+    
+    Bumped version number to 2.8
+
+M	dbpg.h
+M	tclcmds.c
+
+commit e570aa2dae6f51c73cfb8b7ea61200b0e85b0239
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-01-19
+
+    improved spelling
+
+M	nsdbpg.c
+
+commit 3f2c48e3074f40c37fee31887fe7c3cde48d44dd
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-01-19
+
+    new pg-driver specific command: ns_pg_prepare /sql/
+    
+    Return a dict building a prepared statement for the passed-in SQL
+    statement. The dict contains the keys "sql" and "args".
+
+M	README
+M	dbpg.h
+M	tclcmds.c
+
+commit 2da2303f68aba7168045126257e7174fda3f4bca
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2022-11-12
+
+    make explicit that function result is ignored
+
+M	tclcmds.c
+
+commit 752644c9413938eb20b17d1f8819afe58971c49f
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2022-07-22
+
+    removed necessity for setting NS_SET_DSTRING for the db driver
+
+M	nsdbpg.c
+
+commit 4acec5b2ef67482c348592be61028230cb41faae
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2022-07-22
+
+    Provided a maximum value for keeping preallocated buffers
+
+M	nsdbpg.c
+
+commit 02782092229aeb8c77a682e04c9191fd2569252d
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2022-07-20
+
+    fix const declarations
+
+M	nsdbpg.c
+
 commit 2171e20b34762fd647a4fb2db0ad537d18ce28f9
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2022-06-13
