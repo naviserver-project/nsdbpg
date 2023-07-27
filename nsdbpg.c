@@ -584,16 +584,26 @@ GetRow(const Ns_DbHandle *handle, Ns_Set *row)
 
         } else {
             size_t i;
+            Tcl_DString ds, *dsPtr = &ds;
 
+            Tcl_DStringInit(dsPtr);
             Ns_SetClearValues(row, 4096);
+
             for (i = 0u; i < (size_t)pconn->nCols; i++) {
+                int   rawFieldLength = PQgetlength(pconn->res, pconn->curTuple, (int)i);
+                char *rawFieldValue  = PQgetvalue(pconn->res, pconn->curTuple, (int)i);
+
                 /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu '%s' PQgetlength %d",
-                       handle->poolname, i,  PQgetvalue(pconn->res, pconn->curTuple, (int)i),
-                       PQgetlength(pconn->res, pconn->curTuple, (int)i));*/
-                Ns_SetPutValueSz(row, i,
-                                 PQgetvalue(pconn->res, pconn->curTuple, (int)i),
-                                 PQgetlength(pconn->res, pconn->curTuple, (int)i));
+                  handle->poolname, i,  rawFieldValue, rawFieldLength);*/
+                (void)Tcl_ExternalToUtfDString(NULL, rawFieldValue, (TCL_SIZE_T)rawFieldLength, dsPtr);
+                /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu converted '%s' PQgetlength %d",
+                  handle->poolname, i, dsPtr->string, dsPtr->length);*/
+                Ns_SetPutValueSz(row, i, dsPtr->string, dsPtr->length);
+
+                Ns_DStringSetLength(dsPtr, 0);
             }
+            Tcl_DStringFree(dsPtr);
+
 #ifdef NS_SET_DEBUG
             Ns_Log(Notice, "nsdbpg(%s): GetRow set %p size %lu maxsize %lu data len %d avail %d DONE",
                    handle->poolname,

@@ -40,6 +40,17 @@
 #define NSDBPG_VERSION "2.8"
 
 /*
+ * Forward compatibility, in case a new version of the module is compiled
+ * against an old version of NaviServer.
+ */
+#ifndef TCL_OBJC_T
+# define TCL_SIZE_T           int
+# define TCL_OBJC_T           int
+# define TCL_OBJCMDPROC_T     Tcl_ObjCmdProc
+# define TCL_CREATEOBJCOMMAND Tcl_CreateObjCommand
+#endif
+
+/*
  * In order to obtain PG_VERSION_NUM and PG_VERSION we load the
  * pg_config.h. However, the PACKAGE_* macros conflict with
  * NaviServer's packaging information, so we drop these.

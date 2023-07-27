@@ -37,17 +37,6 @@
 #include "dbpg.h"
 
 /*
- * Forward compatibility, in case a new version of the module is compiled
- * against an old version of NaviServer.
- */
-#ifndef TCL_OBJC_T
-# define TCL_SIZE_T           int
-# define TCL_OBJC_T           int
-# define TCL_OBJCMDPROC_T     Tcl_ObjCmdProc
-# define TCL_CREATEOBJCOMMAND Tcl_CreateObjCommand
-#endif
-
-/*
  * The following structure defines a linked list of strings
  * for parsing SQL statements.
  */
