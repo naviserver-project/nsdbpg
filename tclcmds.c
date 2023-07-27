@@ -76,7 +76,7 @@ static int LinkedList_len(const linkedListElement_t *head);
 static void LinkedList_free_list (linkedListElement_t *head);
 
 static linkedListElement_t *
-ListElementExternal(const char *msg, char *chars, int len, Tcl_DString *encDsPtr)
+ListElementExternal(const char *msg, char *chars, TCL_SIZE_T len, Tcl_DString *encDsPtr)
     NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2) NS_GNUC_NONNULL(4)
     NS_GNUC_RETURNS_NONNULL;
 
