@@ -69,6 +69,9 @@
 # define TCL_OBJCMDPROC_T     Tcl_ObjCmdProc
 # define TCL_CREATEOBJCOMMAND Tcl_CreateObjCommand
 #endif
+#ifndef TCL_INDEX_NONE
+# define TCL_INDEX_NONE       -1
+#endif
 
 /*
  * The following structure maintains per handle data
