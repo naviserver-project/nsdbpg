@@ -1,3 +1,68 @@
+commit 34918091115a359cf9d0aa0a7691eace9034a54c
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-31
+
+    improve forward compatibility with TCL9
+
+M	dbpg.h
+
+commit 7bc97dff057a3de64e6b9b40cf05dd4db9612b09
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-27
+
+    move forward compatibility macros after other ns* includes
+
+M	dbpg.h
+
+commit 367118cd12e5a450b5ac8df49763d3406b8f0448
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-27
+
+    align prototype and function definition
+
+M	tclcmds.c
+
+commit cd9b00c86901ba4e36579568f2716933e4350a65
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-27
+
+    added .gitignore file
+
+A	.gitignore
+
+commit 1d76a689c9aea0c9ffff7f67203e51a3c9726f8c
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-27
+
+    allow different levels of tc9 compatibility macros
+
+M	dbpg.h
+
+commit 2aaeacae3e00dc9e5fee0f38533f109b8197c563
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-27
+
+    Fixed a potential problem with UTF-8 values in the database
+    
+    When the database contains UTF-8 values which are not acceptable
+    in the used Tcl version, certain Tcl commands can crash. This
+    happened e.g. with "string tolower". This change fixes now such
+    cases.
+
+M	dbpg.h
+M	nsdbpg.c
+M	tclcmds.c
+
+commit ed969c9d8f8d756c0c57522eef87802dd569a90a
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-07-24
+
+    fixed bug when variable is not included in bind var ns_set
+    
+    Also, improved Tcl9 compatibility
+
+M	tclcmds.c
+
 commit 5b600cae17adf6797b8066b9903a08621eccdb0e
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2023-04-19
