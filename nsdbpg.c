@@ -35,9 +35,24 @@
  */
 
 #include "dbpg.h"
+
 NS_EXTERN const int Ns_ModuleVersion;
 NS_EXPORT const int Ns_ModuleVersion = 1;
 const char *pgDbName = "PostgreSQL";
+
+/*
+ * Define a few PostgreSQL types for speed improvement (avoid UTF8
+ * conversions). The types are defined in PostgresSQL in
+ * <server/catalog/pg_type_d.h> which is not available in all
+ * installations/versions at the same place. The used (numeric) types are
+ * unchanged since a very long time and are unlikely to be changed in the
+ * future.
+ */
+#define BOOLOID 16
+#define INT2OID 21
+#define INT4OID 23
+#define INT8OID 20
+#define OIDOID 26
 
 /*
  * Local functions defined in this file.
@@ -591,23 +606,43 @@ GetRow(const Ns_DbHandle *handle, Ns_Set *row)
                 Tcl_DString ds, *dsPtr = &ds;
                 int   rawFieldLength = PQgetlength(pconn->res, pconn->curTuple, (int)i);
                 char *rawFieldValue  = PQgetvalue(pconn->res, pconn->curTuple, (int)i);
+                Oid   pgType         = PQftype(pconn->res, (int)i);
 
-                /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu '%s' PQgetlength %d",
-                  handle->poolname, i,  rawFieldValue, rawFieldLength);*/
-                Ns_Log(Notice, "nsdbpg(%s): GetRow %lu  PQgetlength %d",
-                       handle->poolname, i,  rawFieldLength);
+                /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu type %u '%s' PQgetlength %d",
+                  handle->poolname, i,  pgType, rawFieldValue, rawFieldLength);*/
+
                 /*
-                 * Tcl_ExternalToUtfDString performs by itself a
-                 * Tcl_DStringInit(dsPtr); passing a dsPtr with pre-allocated
-                 * size causes a memory leak (e.g., when using the usual idiom
-                 * setting the length of the dsPtr to 0 to keep the
-                 * pre-allocated dynamic memory).
+                 * Avoid for some common datatypes the UTF8 conversion for
+                 * speed improvement. The types are defined in PostgresSQL in
+                 * <server/catalog/pg_type_d.h> which is not available in all
+                 * installations/versions at the same place. The used
+                 * (numeric) types unchanged since a very long time and are
+                 * unlikely to be changed in the future.
                  */
-                (void)Tcl_ExternalToUtfDString(NULL, rawFieldValue, (TCL_SIZE_T)rawFieldLength, dsPtr);
-                /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu converted '%s' PQgetlength %d",
-                  handle->poolname, i, dsPtr->string, dsPtr->length);*/
-                Ns_SetPutValueSz(row, i, dsPtr->string, dsPtr->length);
-                Tcl_DStringFree(dsPtr);
+                switch (pgType) {
+                case BOOLOID: NS_FALL_THROUGH; /* fall through */
+                case INT2OID: NS_FALL_THROUGH; /* fall through */
+                case INT4OID: NS_FALL_THROUGH; /* fall through */
+                case INT8OID: NS_FALL_THROUGH; /* fall through */
+                case OIDOID:
+                    Ns_SetPutValueSz(row, i, rawFieldValue, rawFieldLength);
+                    break;
+
+                default:
+                    /*
+                     * Tcl_ExternalToUtfDString performs by itself a
+                     * Tcl_DStringInit(dsPtr); passing a dsPtr with pre-allocated
+                     * size causes a memory leak (e.g., when using the usual idiom
+                     * setting the length of the dsPtr to 0 to keep the
+                     * pre-allocated dynamic memory).
+                     */
+                    (void)Tcl_ExternalToUtfDString(NULL, rawFieldValue, (TCL_SIZE_T)rawFieldLength, dsPtr);
+                    /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu converted '%s' PQgetlength %d",
+                      handle->poolname, i, dsPtr->string, dsPtr->length);*/
+                    Ns_SetPutValueSz(row, i, dsPtr->string, dsPtr->length);
+                    Tcl_DStringFree(dsPtr);
+                    break;
+                }
             }
 
 #ifdef NS_SET_DEBUG
