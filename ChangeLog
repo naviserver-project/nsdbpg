@@ -1,3 +1,39 @@
+commit c3a96d9ef4c0d85addd61d4c2d099a77995e0e6c
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-10-31
+
+    optimization: avoid UTF8 conversion for int/bool/oid types
+
+M	nsdbpg.c
+
+commit d0a40ac4b855d7b6f84df3e6e0ef7bac21013208
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-10-31
+
+    Fixed a potential memory leak in UTF-8 conversions
+    
+    A potential memory leak was introduced with the back and forth
+    conversion between "external" UTF8 and Tcl's internal UTF8
+    variant. The problem shows up when returning multiple tuples, where a
+    string value larger than TCL_DSTRING_STATIC_SIZE is returned (unless,
+    this comes from the last column). The problem was induced by an
+    irregularity passing Tcl_DStrings to functions. The function
+    Tcl_ExternalToUtfDString() blindly initializes the passed-in pointer
+    to a Tcl_DString, which will lead to a memory leak, if this
+    Tcl_DString has already a pre-allocated size.  So, e.g., the usual
+    idiom setting the length of the dsPtr to 0 to keep the pre-allocated
+    dynamic memory causes a leak.
+
+M	nsdbpg.c
+
+commit 7a83f43038bca41f168b8f57fa5defa205128c94
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-10-31
+
+    update documentation of PostgreSQL 16
+
+M	README
+
 commit 34918091115a359cf9d0aa0a7691eace9034a54c
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2023-07-31
@@ -194,7 +230,7 @@ Date:   2021-11-21
     - improved function naming
     - added missing nonnull asserts
     - reduced number of required strlen() operations
-    - bumped version to 2.6
+    - bumped verison to 2.6
 
 M	dbpg.h
 M	nsdbpg.c
@@ -204,7 +240,7 @@ commit 90185dd160cf06f9c4dc797280c13dcc66af49ba
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2021-11-19
 
-    restrict bind vars to start with an alpha character.
+    restrict bind vars to start with an alpha characer.
     
     This change is required for the slice notation of SQL arrays
     in PostgreSQL
@@ -357,7 +393,7 @@ commit 5379680169e05cd59bb423fa91cb5c91ada51011
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2019-09-11
 
-    use static definitions when possible
+    use static defintions when possible
     don't use default, when all cases are enumerated
 
 M	nsdbpg.c
@@ -491,7 +527,7 @@ commit f63b228ad86d2506c3abac13c0f521d1f571cdbf
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2017-10-17
 
-    bump advertised pg version number
+    bump advertized pg version number
 
 M	README
 
@@ -653,7 +689,7 @@ commit c61e8cc3080cdae5ca7a68fe4605d7debe61d5c8
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2016-08-01
 
-    - don't't use boolean as argument of comparison
+    - dont't use boolean as argument of comparison
 
 M	tclcmds.c
 
@@ -687,7 +723,7 @@ commit 4e7822a0178c018f44bf37e46f71f1502d35e449
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2016-07-13
 
-    - use Ns_ReturnCode on more occasions
+    - use Ns_ReturnCode on more occations
 
 M	nsdbpg.c
 M	tclcmds.c
@@ -778,7 +814,7 @@ commit 21b5cef06f5480765bccb1a99027b5a6a7dd2294
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2016-01-17
 
-    - fix conflict on prototpyes
+    - fix confict on prototpyes
 
 M	tclcmds.c
 
@@ -952,7 +988,7 @@ Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-11-14
 
     - add "default" labels to switch statements
-    - add editor hints to keep formatting conventions, prefer spaces over tabs
+    - add editor hints to to keep formatting conventions, prefer spaces over tabs
 
 M	tclcmds.c
 
@@ -990,7 +1026,7 @@ commit 079cb2416957c79849e85687c41c496e385bff2c
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-11-06
 
-    - avound implicit signed/unsigned conversion
+    - avound implicit signed/unsigned converison
 
 M	tclcmds.c
 
@@ -1021,7 +1057,7 @@ commit 32da98d698e4f5ee81d668194c45eea66bc07789
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-11-01
 
-    - prefer boolean expressions
+    - prefer boolen expressions
 
 M	nsdbpg.c
 M	tclcmds.c
@@ -1122,7 +1158,7 @@ commit c1d2df7e1efa5537364ef88ed0f498f655181fbe
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-09-19
 
-    - use angle brackets for include filenames
+    - use angle brackets for include file names
 
 M	dbpg.h
 
@@ -1301,7 +1337,7 @@ commit 0fac6bf6677deade5fb5f6877f52197a1157e6fb
 Author: Vlad Seryakov <vlad@crystalballinc.com>
 Date:   2007-05-23
 
-    Set NAVISERVER build variable conditionally
+    Set NAVISERVER build variable conditionaly
 
 M	Makefile
 
@@ -1320,7 +1356,7 @@ commit cc9f1451d99a42a213bf8c5f9c00ce6ff718a1cc
 Author: Vlad Seryakov <vlad@crystalballinc.com>
 Date:   2005-08-08
 
-    Use new style ns_strdup etc. functions inplace of deprecated Ns_* functions
+    Use new style ns_strdup etc. functions inplace of depreciated Ns_* functions
 
 M	tclcmds.c
 
@@ -1328,7 +1364,7 @@ commit 598b9f5d13eee0965b7dcdccba358f6ca3f3f739
 Author: Vlad Seryakov <vlad@crystalballinc.com>
 Date:   2005-08-01
 
-    Use Ns_TclRegisterTrace inplace of deprecated Ns_TclInitInterps
+    Use Ns_TclRegisterTrace inplace of depreciated Ns_TclInitInterps
 
 M	tclcmds.c
 
@@ -1368,7 +1404,7 @@ Date:   2005-06-15
     * nsdbpg.c: Untabify, reindent and reorganize. Drop emulation code
     for AOLserver 2.x ns_table etc. commands.
     
-    * tclcmds.c: Split extra Tcl commands and bind variable emulation
+    * tclcmds.c: Split extra Tcl commands and bind vaiable emulation
     code into new file.
     
     * nsdbpg.h:
