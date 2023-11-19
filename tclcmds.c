@@ -1632,7 +1632,8 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *
         }
         out_buf[j] = UCHAR('\0');
 
-        sprintf(segment_pos, "%d, %d, '%s')", segment, segment_len, out_buf);
+        sprintf(segment_pos, "%d, %" PRITcl_Size ", '%s')",
+                segment, segment_len, out_buf);
         if (Ns_DbExec(handle, query) != NS_DML) {
             Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
             result = TCL_ERROR;
