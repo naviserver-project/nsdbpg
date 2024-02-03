@@ -145,14 +145,14 @@ Ns_PgServerInit(const char *server, const char *UNUSED(module), const char *UNUS
     return Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
 }
 
-static Ns_ReturnCode
+static int
 AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
 {
     (void)TCL_CREATEOBJCOMMAND(interp, "ns_pg",      PgObjCmd,     NULL, NULL);
     (void)TCL_CREATEOBJCOMMAND(interp, "ns_pg_bind", PgBindObjCmd, NULL, NULL);
     (void)TCL_CREATEOBJCOMMAND(interp, "ns_pg_prepare", PgPrepareObjCmd, NULL, NULL);
 
-    return NS_OK;
+    return TCL_OK;
 }
 
 
@@ -1634,6 +1634,7 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *
 
         sprintf(segment_pos, "%d, %" PRITcl_Size ", '%s')",
                 segment, segment_len, out_buf);
+
         if (Ns_DbExec(handle, query) != NS_DML) {
             Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
             result = TCL_ERROR;
