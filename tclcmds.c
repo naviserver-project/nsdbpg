@@ -138,9 +138,17 @@ static int get_blob_tuples(Tcl_Interp *interp, Ns_DbHandle *handle, char *query,
 Ns_ReturnCode
 Ns_PgServerInit(const char *server, const char *UNUSED(module), const char *UNUSED(driver))
 {
-    intTypePtr = Tcl_GetObjType("int");
+    /*
+     * The API call Tcl_GetObjType("int") does not work under Tcl9. Therefore,
+     * get the type from a temporary Tcl intObj.
+     */
+    Tcl_Obj *tmpObj = Tcl_NewIntObj(0);
+
+    intTypePtr = tmpObj->typePtr;
+    Tcl_DecrRefCount(tmpObj);
+
     if (intTypePtr == NULL) {
-        Tcl_Panic("NsTclInitObjs: no int type");
+        Tcl_Panic("nsdbpg: no int type");
     }
     return Ns_TclRegisterTrace(server, AddCmds, NULL, NS_TCL_TRACE_CREATE);
 }
