@@ -1072,7 +1072,8 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T objc,
 {
     char        *handleString = (char*)NS_EMPTY_STRING;
     Ns_DbHandle *handle;
-    int          nargs, result;
+    int          result;
+    TCL_SIZE_T   nargs;
     Tcl_Obj     *subCmdObj;
     Ns_ObjvSpec  args[] = {
         {"subcmd", Ns_ObjvObj,    &subCmdObj, NULL},
