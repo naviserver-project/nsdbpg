@@ -401,12 +401,15 @@ static Tcl_FreeInternalRepProc	ParsedSQLFreeInternalRep;
 static Tcl_SetFromAnyProc       ParsedSQLSetFromAny;
 static Tcl_DupInternalRepProc   ParsedSQLDupInternalRep;
 
-static Tcl_ObjType ParsedSQLObjType = {
+static CONST86 Tcl_ObjType ParsedSQLObjType = {
     "parsedSQL",			/* name */
     ParsedSQLFreeInternalRep,		/* freeIntRepProc */
     ParsedSQLDupInternalRep,		/* dupIntRepProc */
     NULL,				/* updateStringProc */
     ParsedSQLSetFromAny			/* setFromAnyProc */
+#ifdef TCL_OBJTYPE_V0
+   ,TCL_OBJTYPE_V0
+#endif
 };
 
 /*
