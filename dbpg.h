@@ -62,9 +62,6 @@
 #ifndef TCL_SIZE_T
 # define TCL_SIZE_T           int
 #endif
-#ifndef TCL_OBJC_T
-# define TCL_OBJC_T           int
-#endif
 #ifndef TCL_OBJCMDPROC_T
 # define TCL_OBJCMDPROC_T     Tcl_ObjCmdProc
 # define TCL_CREATEOBJCOMMAND Tcl_CreateObjCommand

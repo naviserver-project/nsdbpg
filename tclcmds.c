@@ -181,7 +181,7 @@ AddCmds(Tcl_Interp *interp, const void *UNUSED(arg))
  */
 
 static int
-PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T argc, Tcl_Obj *const argv[])
+PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T argc, Tcl_Obj *const argv[])
 {
     Ns_DbHandle      *handle;
     const Connection *pconn;
@@ -781,7 +781,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
  *----------------------------------------------------------------------
  */
 static int
-PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -833,7 +833,7 @@ PgBindDmlObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_
  *----------------------------------------------------------------------
  */
 static int
-PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -889,7 +889,7 @@ PgBindOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, T
  *----------------------------------------------------------------------
  */
 static int
-PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -951,7 +951,7 @@ PgBindZeroOrOneRowObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T o
  *----------------------------------------------------------------------
  */
 static int
-PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -1007,7 +1007,7 @@ PgBindSelectObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, T
  *----------------------------------------------------------------------
  */
 static int
-PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     Ns_Set         *bindSet = NULL;
     Tcl_Obj        *sqlObj;
@@ -1071,7 +1071,7 @@ PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_OBJC_T objc, Tcl
  */
 
 int
-PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     char        *handleString = (char*)NS_EMPTY_STRING;
     Ns_DbHandle *handle;
@@ -1133,7 +1133,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T objc,
  *----------------------------------------------------------------------
  */
 static int
-PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_OBJC_T objc, Tcl_Obj *const* objv)
+PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
     Tcl_Obj        *sqlObj;
     int             result = TCL_OK;
