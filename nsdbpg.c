@@ -42,7 +42,7 @@ const char *pgDbName = "PostgreSQL";
 
 /*
  * Define a few PostgreSQL types for speed improvement (avoid UTF8
- * conversions). The types are defined in PostgresSQL in
+ * conversions). The types are defined in PostgreSQL in
  * <server/catalog/pg_type_d.h> which is not available in all
  * installations/versions at the same place. The used (numeric) types are
  * unchanged since a very long time and are unlikely to be changed in the
@@ -511,8 +511,8 @@ Exec(Ns_DbHandle *handle, const char *sql)
 
     /*
      * The driver does not make use of PIPELINE processing, so we should not
-     * see the response codes for PGRES_PIPELINE_SYNC and
-     * PGRES_PIPELINE_ABORTED.
+     * see the response codes for PGRES_PIPELINE_SYNC, PGRES_PIPELINE_ABORTED
+     * and PGRES_TUPLES_CHUNK.
      */
     switch(PQresultStatus(pconn->res)) {
     case PGRES_TUPLES_OK:
@@ -539,6 +539,9 @@ Exec(Ns_DbHandle *handle, const char *sql)
 #if defined(PG_VERSION_NUM) && PG_VERSION_NUM >= 140000
     case PGRES_PIPELINE_SYNC:      NS_FALL_THROUGH; /* fall through */
     case PGRES_PIPELINE_ABORTED:   NS_FALL_THROUGH; /* fall through */
+#endif
+#if defined(PG_VERSION_NUM) && PG_VERSION_NUM >= 170000
+    case PGRES_TUPLES_CHUNK:      NS_FALL_THROUGH; /* fall through */
 #endif
     case PGRES_FATAL_ERROR:
         Ns_Log(Error, "nsdbpg(%s): result status: %d message: %s",
@@ -613,7 +616,7 @@ GetRow(const Ns_DbHandle *handle, Ns_Set *row)
 
                 /*
                  * Avoid for some common datatypes the UTF8 conversion for
-                 * speed improvement. The types are defined in PostgresSQL in
+                 * speed improvement. The types are defined in PostgreSQL in
                  * <server/catalog/pg_type_d.h> which is not available in all
                  * installations/versions at the same place. The used
                  * (numeric) types unchanged since a very long time and are
@@ -631,10 +634,10 @@ GetRow(const Ns_DbHandle *handle, Ns_Set *row)
                 default:
                     /*
                      * Tcl_ExternalToUtfDString performs by itself a
-                     * Tcl_DStringInit(dsPtr); passing a dsPtr with pre-allocated
+                     * Tcl_DStringInit(dsPtr); passing a dsPtr with preallocated
                      * size causes a memory leak (e.g., when using the usual idiom
                      * setting the length of the dsPtr to 0 to keep the
-                     * pre-allocated dynamic memory).
+                     * preallocated dynamic memory).
                      */
                     (void)Tcl_ExternalToUtfDString(NULL, rawFieldValue, (TCL_SIZE_T)rawFieldLength, dsPtr);
                     /*Ns_Log(Notice, "nsdbpg(%s): GetRow %lu converted '%s' PQgetlength %d",

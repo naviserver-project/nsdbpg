@@ -15,6 +15,8 @@ code, open:
 
         http://www.postgresql.org
 
+Compatibility: The module compiles with Tcl 8.5, 8.6 and 9.0.
+
 What's new?
 -----------
 
@@ -145,13 +147,13 @@ Examples for a build operation:
 
      make PGINCLUDE=/usr/include/postgresql
 
-To build/install on a non-standard path of PostgreSQL libraties, use e.g.:
+To build/install on a non-standard path of PostgreSQL libraries, use e.g.:
 
      export PG=/usr/local/pg16
      make PGLIB=$PG/lib PGINCLUDE=$PG/include
      make PGLIB=$PG/lib PGINCLUDE=$PG/include install
 
-In case NaviServer is installed at a differet location, use e.g.
+In case NaviServer is installed at a different location, use e.g.
 
      make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/
      make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/ install
