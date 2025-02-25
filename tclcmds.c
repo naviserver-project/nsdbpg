@@ -619,7 +619,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                 /*
                  * The values in the fragments are already encoded.
                  */
-                Ns_DStringNAppend(dsPtr, frag_p->chars, frag_p->length);
+                Tcl_DStringAppend(dsPtr, frag_p->chars, frag_p->length);
                 Ns_Log(Debug, "... appended encoded fragment <%s>", frag_p->chars);
                 frag_p = frag_p->next;
             }
@@ -679,7 +679,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                      * If the bind value is just an empty string, pass "NULL"
                      * as the value for SQL.
                      */
-                    Ns_DStringNAppend(dsPtr, "NULL", 4);
+                    Tcl_DStringAppend(dsPtr, "NULL", 4);
                     var_p = var_p->next;
                     continue;
 
@@ -706,9 +706,9 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                      * string here.
                      */
                     if (likely(strchr(encodedString, INTCHAR('\\')) == NULL)) {
-                        Ns_DStringNAppend(dsPtr, "'", 1);
+                        Tcl_DStringAppend(dsPtr, "'", 1);
                     } else {
-                        Ns_DStringNAppend(dsPtr, "E'", 2);
+                        Tcl_DStringAppend(dsPtr, "E'", 2);
                     }
 
                     /*
@@ -727,26 +727,26 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                     for (p = encodedString; *p != '\0'; p++) {
                         if (unlikely(*p == '\'')) {
                             if (likely(p > encodedString)) {
-                                Ns_DStringNAppend(dsPtr, encodedString, (int)(p - encodedString));
+                                Tcl_DStringAppend(dsPtr, encodedString, (int)(p - encodedString));
                             }
                             encodedString = p;
-                            Ns_DStringNAppend(dsPtr, "'", 1);
+                            Tcl_DStringAppend(dsPtr, "'", 1);
                         } else if (unlikely(*p == '\\')) {
                             if (likely(p > encodedString)) {
-                                Ns_DStringNAppend(dsPtr, encodedString, (int)(p - encodedString));
+                                Tcl_DStringAppend(dsPtr, encodedString, (int)(p - encodedString));
                             }
                             encodedString = p;
-                            Ns_DStringNAppend(dsPtr, "\\", 1);
+                            Tcl_DStringAppend(dsPtr, "\\", 1);
                         }
                     }
 
                     if (likely(p > encodedString)) {
-                        Ns_DStringNAppend(dsPtr, encodedString, (int)(p - encodedString));
+                        Tcl_DStringAppend(dsPtr, encodedString, (int)(p - encodedString));
                     }
                     /*
                      * Terminate the quoted value.
                      */
-                    Ns_DStringNAppend(dsPtr, "'", 1);
+                    Tcl_DStringAppend(dsPtr, "'", 1);
 
                     Tcl_DStringFree(encDsPtr);
                 }
@@ -754,7 +754,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
             }
         }
         if (result == NS_OK) {
-            sql = Ns_DStringValue(dsPtr);
+            sql = dsPtr->string;
         } else {
             sql = NULL;
         }
@@ -1110,7 +1110,7 @@ PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T objc,
 
     } else {
 
-        Ns_DStringFree(&handle->dsExceptionMsg);
+        Tcl_DStringFree(&handle->dsExceptionMsg);
         handle->cExceptionCode[0] = '\0';
         result = Ns_SubcmdObjv(subcmds, (ClientData)handle, interp, objc, objv);
     }
@@ -1155,7 +1155,7 @@ PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T ob
 
         Tcl_DStringInit(dsPtr);
         Tcl_DStringInit(varDsPtr);
-        Ns_DStringNAppend(varDsPtr, ":", 1);
+        Tcl_DStringAppend(varDsPtr, ":", 1);
 
         parse_bind_variables(Tcl_GetString(sqlObj),
                              &bind_variables,
@@ -1166,7 +1166,7 @@ PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T ob
              ) {
 
             if (frag_p != NULL) {
-                Ns_DStringNAppend(dsPtr, frag_p->chars, frag_p->length);
+                Tcl_DStringAppend(dsPtr, frag_p->chars, frag_p->length);
                 frag_p = frag_p->next;
             }
 
@@ -1178,12 +1178,12 @@ PgPrepareObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T ob
                  * Append substitution variables in the SQL body
                  */
                 bufLen = snprintf(buf, sizeof(buf), "$%d", ++varCount);
-                Ns_DStringNAppend(dsPtr, buf, bufLen);
+                Tcl_DStringAppend(dsPtr, buf, bufLen);
                 /*
                  * Return the names of the substituted variables for the
                  * signature of the prepared statement.
                  */
-                Ns_DStringNAppend(varDsPtr, var_p->chars, var_p->length);
+                Tcl_DStringAppend(varDsPtr, var_p->chars, var_p->length);
                 Tcl_ListObjAppendElement(interp, namesObj,
                                          Tcl_NewStringObj(varDsPtr->string, varDsPtr->length));
                 Tcl_DStringSetLength(varDsPtr, 1);
@@ -1264,8 +1264,8 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, const char *cmd, const char *sql
     if (handle->verbose) {
         if (strlen(sql) > maxLen) {
             Ns_DStringPrintf(&ds, "\nSQL (truncated to %lu characters): ", maxLen);
-            Ns_DStringNAppend(&ds, sql, (TCL_SIZE_T)maxLen);
-            Ns_DStringNAppend(&ds, "...", 3);
+            Tcl_DStringAppend(&ds, sql, (TCL_SIZE_T)maxLen);
+            Tcl_DStringAppend(&ds, "...", 3);
         } else {
             Ns_DStringPrintf(&ds, "\nSQL: %s", sql);
         }

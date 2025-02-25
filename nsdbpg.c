@@ -58,13 +58,13 @@ const char *pgDbName = "PostgreSQL";
  * Local functions defined in this file.
  */
 
-static const char *DbType(Ns_DbHandle *handle);
+static const char   *DbType(Ns_DbHandle *handle);
 static Ns_ReturnCode OpenDb(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode CloseDb(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
-static Ns_Set *BindRow(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
-static int     Exec(Ns_DbHandle *handle, const char *sql)  NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
-static int     GetRow(const Ns_DbHandle *handle, Ns_Set *row) NS_GNUC_NONNULL(1);
-static int     GetRowCount(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static Ns_Set       *BindRow(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static int           Exec(Ns_DbHandle *handle, const char *sql)  NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
+static int           GetRow(const Ns_DbHandle *handle, Ns_Set *row) NS_GNUC_NONNULL(1);
+static int           GetRowCount(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode Flush(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 
@@ -126,9 +126,9 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
                 || STRIEQ(style, "POSTGRES") || STRIEQ(style, "GERMAN")
                 || STRIEQ(style, "NONEURO") || STRIEQ(style, "EURO")
                 ) {
-                Ns_DString  ds;
+                Tcl_DString ds;
 
-                Ns_DStringInit(&ds);
+                Tcl_DStringInit(&ds);
                 Ns_DStringPrintf(&ds, "set datestyle to '%s'", style);
                 dateStyle = Ns_DStringExport(&ds);
                 Ns_Log(Notice, "nsdbpg: Using datestyle: %s", style);
@@ -211,11 +211,11 @@ OpenDb(Ns_DbHandle *handle)
     } else {
         Connection   *pconn;
         PGconn       *pgconn;
-        Ns_DString    ds;
+        Tcl_DString   ds;
         char         *host, *portStart = NULL, *db = NULL, *end;
 
-        Ns_DStringInit(&ds);
-        Ns_DStringAppend(&ds, handle->datasource);
+        Tcl_DStringInit(&ds);
+        Tcl_DStringAppend(&ds, handle->datasource, TCL_INDEX_NONE);
 
         Ns_HttpParseHost2(ds.string, NS_TRUE, &host, &portStart, &end);
         if (portStart != NULL) {
@@ -384,7 +384,7 @@ static int
 Exec(Ns_DbHandle *handle, const char *sql)
 {
     Connection  *pconn;
-    Ns_DString   dsSql;
+    Tcl_DString  dsSql;
     int          retry_count = 2;
     int          result = NS_ERROR;
 
@@ -403,8 +403,8 @@ Exec(Ns_DbHandle *handle, const char *sql)
     pconn = handle->connection;
     PQclear(pconn->res);
 
-    Ns_DStringInit(&dsSql);
-    Ns_DStringAppend(&dsSql, sql);
+    Tcl_DStringInit(&dsSql);
+    Tcl_DStringAppend(&dsSql, sql, TCL_INDEX_NONE);
 
     /*
      * Trim spaces
@@ -416,7 +416,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
      * Make sure to end statement with a semicolon.
      */
     if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
-        Ns_DStringAppend(&dsSql, ";");
+        Tcl_DStringAppend(&dsSql, ";", 1);
     }
     Ns_Log(Debug, "nsdbpg(%s): call PQexec with <%s>", handle->poolname, dsSql.string);
     pconn->res = PQexec(pconn->pgconn, dsSql.string);
@@ -427,10 +427,10 @@ Exec(Ns_DbHandle *handle, const char *sql)
      * anyway, as it can't really hurt anything :-)
      */
     if (PQresultStatus(pconn->res) == PGRES_BAD_RESPONSE) {
-        Ns_DStringAppend(&handle->dsExceptionMsg, "PGRES_BAD_RESPONSE ");
+        Tcl_DStringAppend(&handle->dsExceptionMsg, "PGRES_BAD_RESPONSE ", 19);
     }
-    Ns_DStringAppend(&handle->dsExceptionMsg,
-                     PQresultErrorMessage(pconn->res));
+    Tcl_DStringAppend(&handle->dsExceptionMsg,
+                      PQresultErrorMessage(pconn->res), TCL_INDEX_NONE);
 
     /* This loop should actually be safe enough, but we'll take no
      * chances and guard against infinite retries with a counter.
@@ -475,7 +475,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
             if (in_transaction) {
                 Ns_Log(Notice, "nsdbpg(%s): In transaction, conn died, error returned", handle->poolname);
             }
-            Ns_DStringFree(&dsSql);
+            Tcl_DStringFree(&dsSql);
             return NS_ERROR;
         }
 
@@ -493,7 +493,7 @@ Exec(Ns_DbHandle *handle, const char *sql)
          */
     }
 
-    Ns_DStringFree(&dsSql);
+    Tcl_DStringFree(&dsSql);
 
     if (pconn->res == NULL) {
         Ns_Log(Error, "nsdbpg(%s): Could not send query '%s': %s",
