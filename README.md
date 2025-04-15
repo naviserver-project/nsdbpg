@@ -1,18 +1,20 @@
 ## What is this?
 
-This module implements a simple NaviServer/AOLserver database services driver. A database driver is a module which interfaces between the NaviServer database-independent `nsdb` module and the API of a particular DBMS. A database driver's job is to open connections, send SQL statements, and translate the results into the form used by `nsdb`. In this case, the driver is for the PostgreSQL ORDBMS from The PostgreSQL Global Development Group. This is the official driver for the OpenACS project. PostgreSQL can be downloaded and installed on most Unix systems. To use this driver, you must have PostgreSQL installed on your system. For more information on PostgreSQL or to download the code, open:
+This module provides a straightforward database services driver for NaviServer. It acts as an intermediary between the NaviServer database-independent `nsdb` module and the API of a specific DBMS. In essence, the driver establishes connections, executes SQL commands, and converts the results into the format required by `nsdb`. This driver is designed for the PostgreSQL ORDBMS, developed by The PostgreSQL Global Development Group, and serves as the official driver for the OpenACS project. Since PostgreSQL is available on most Unix systems, ensure that it is installed on your system before using this driver. For additional details or to download PostgreSQL, visit:
 
     http://www.postgresql.org
 
-**Compatibility:** The module compiles with Tcl 8.5, 8.6 and 9.0.
+**Compatibility:** This module compiles with Tcl versions 8.5, 8.6, and 9.0.
 
-## What's new?
+## What's New?
 
-See Changelog.
+For the latest updates and modifications, please refer to the Changelog.
 
-## How does it work?
+## How Does It Work?
 
-Driver modules look much like ordinary AOLserver modules but are loaded differently. Instead of being listed with other modules in the `[ns/server/<server-name>/modules]` configuration section, a database driver is listed in the `[ns/db/drivers]` section and `nsdb` does the loading. The database driver initialization function normally does little more than call the `nsdb Ns_DbRegisterDriver()` function with an array of pointers to functions. The functions are then later used by `nsdb` to open database connections and send and process queries. This architecture is much like ODBC on Windows. In addition to open, select, and getrow functions, the driver also provides system catalog functions and a function for initializing a virtual server. The virtual server initialization function is called each time `nsdb` is loaded into a virtual server. In this case, the server initialization function, `Ns_PgServerInit`, adds the `"ns_pg"` Tcl command to the server's Tcl interpreters which can be used to fetch information about an active PostgreSQL connection in a Tcl script.
+Database driver modules for NaviServer resemble typical modules but are loaded in a different manner. Instead of being declared under the `[ns/server/<server-name>/modules]` section, a database driver is registered in the `[ns/db/drivers]` section, and loading is managed automatically by `nsdb`. Typically, the driver’s initialization function simply calls `nsdb`'s `Ns_DbRegisterDriver()` with an array of function pointers. These functions later facilitate database connections, query execution, and result processing—a design approach similar to ODBC on Windows.
+
+In addition to basic functions for opening connections, selecting data, and retrieving rows, the driver also supplies system catalog functions and a virtual server initialization routine. Each time `nsdb` is loaded into a virtual server, the initialization function `Ns_PgServerInit` is executed. This routine registers the `"ns_pg"` Tcl command in the server’s Tcl interpreters, enabling Tcl scripts to access information about an active PostgreSQL connection.
 
 **Contributors to this file include:**
 
@@ -25,16 +27,15 @@ Driver modules look much like ordinary AOLserver modules but are loaded differen
 - Scott S. Goodwin `<scott@scottg.net>`
 - Gustaf Neumann `<neumann@wu-wien.ac.at>`
 
-Original example driver by Jim Davidson
+*Original example driver developed by Jim Davidson.*
 
 ---
 
 ## Sample Configuration
 
-Use something like the following snippet in the configuration of NaviServer. We assume here that the Tcl variables `db_host`, `db_port`, `db_name` and `db_user` are set accordingly.
+Below is an example configuration snippet for NaviServer. This example assumes that the Tcl variables `db_host`, `db_port`, `db_name`, and `db_user` have been defined appropriately.
 
 ```tcl
-===========================================================
 ns_section ns/db/pools {
    ns_param   pool1              "Pool 1"
 }
@@ -42,24 +43,21 @@ ns_section ns/db/pool/pool1 {
    # ns_param  maxidle            0
    # ns_param  maxopen            0
    ns_param   connections        15
-   ns_param   LogMinDuration     0.01   ;# when SQL logging is on, log only statements above this duration
+   ns_param   LogMinDuration     0.01   ;# Only log SQL statements that exceed this duration when SQL logging is enabled
    ns_param   logsqlerrors       true
    ns_param   driver             postgres
    ns_param   datasource         "${db_host}:${db_port}:dbname=${db_name}"
    ns_param   user               $db_user
    ns_param   password           ""
 }
-===========================================================
 ```
 
-If the database is reachable just via SSL, the appropriate PostgreSQL "conninfo" parameters can be added to the datasource.
+If your database connection requires SSL, append the appropriate PostgreSQL "conninfo" parameters to the datasource:
 
 ```tcl
-===========================================================
 ...
    ns_param   datasource         "${db_host}:${db_port}:dbname=${db_name} sslmode=require"
 ...
-===========================================================
 ```
 
 ---
@@ -68,7 +66,7 @@ If the database is reachable just via SSL, the appropriate PostgreSQL "conninfo"
 
 ### ns_pg_bind
 
-This is a variant of the `ns_db` API for evaluating PostgreSQL statements, supporting bind variables (denoted in SQL statements starting with a `:`). The values for the bind variables are either from the `ns_set` provided via the `-bind` option or from the calling environment.
+`ns_pg_bind` is an enhanced version of the `ns_db` API for executing PostgreSQL statements with support for bind variables (denoted by a colon `:` in SQL statements). The bind variable values can be supplied via an `ns_set` using the `-bind` option or derived from the current calling environment.
 
 ```tcl
 ns_pg_bind dml     /handle/ -bind /bind/ /sql/
@@ -80,7 +78,7 @@ ns_pg_bind exec    /handle/ -bind /bind/ /sql/
 
 ### ns_pg
 
-`ns_pg` is a variant of the `ns_db` API for directly interacting with the PostgreSQL client library, including BLOB support (which is probably outdated).
+The `ns_pg` command provides direct interaction with the PostgreSQL client library, including support for BLOB operations (note that BLOB support may be outdated). The available `ns_pg` subcommands include:
 
 ```tcl
 ns_pg blob_dml_file    /handle/ /blobId/ /filename/
@@ -101,20 +99,26 @@ ns_pg status           /handle/
 
 ### ns_pg_prepare /sql/
 
-Returns a dict building a prepared statement for the passed-in SQL statement. The dict contains the keys `"sql"` and `"args"`.
+The `ns_pg_prepare` command returns a dictionary representing a prepared statement for the given SQL command. This dictionary includes the keys `"sql"` and `"args"`.
 
 ---
 
 ## Developer's Guide
 
-Run `make help` for developer information.
+For detailed developer information, run:
 
-The build step requires the following from PostgreSQL:
+```bash
+make help
+```
 
-- The include file `libpq-fe.h`
-- The library `libpq.*`
+### Build Requirements
 
-**Examples for a build operation:**
+The module requires the following from PostgreSQL:
+
+- The header file `libpq-fe.h`
+- The PostgreSQL library files (`libpq.*`)
+
+**Example Build Operations:**
 
 ```bash
 export PG=/usr/local/pg17
@@ -123,7 +127,7 @@ make PGLIB=$PG/lib PGINCLUDE=$PG/include
 make PGINCLUDE=/usr/include/postgresql
 ```
 
-To build/install on a non-standard path of PostgreSQL libraries, use e.g.:
+To build and install the module when PostgreSQL is located in a non-standard directory, use:
 
 ```bash
 export PG=/usr/local/pg17
@@ -131,24 +135,24 @@ make PGLIB=$PG/lib PGINCLUDE=$PG/include
 make PGLIB=$PG/lib PGINCLUDE=$PG/include install
 ```
 
-In case NaviServer is installed at a different location, use e.g.
+If NaviServer is installed in a non-default location, adjust your commands accordingly:
 
 ```bash
 make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/
 make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/ install
 ```
 
-Under MacPorts, you might use something like:
+On systems using MacPorts, you might execute:
 
 ```bash
 PGPATH=postgresql17 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
 ```
 
-For extended code checking via cppcheck, one might use e.g.
+For additional code checking using cppcheck, consider:
 
 ```bash
 PGPATH=postgresql17 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
 ```
 
-See the Makefile for further information on building this module.
+Refer to the Makefile for further details regarding the module build process.
 ```
