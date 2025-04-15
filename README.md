@@ -155,4 +155,3 @@ PGPATH=postgresql17 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/i
 ```
 
 Refer to the Makefile for further details regarding the module build process.
-```
