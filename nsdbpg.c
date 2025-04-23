@@ -71,7 +71,7 @@ static const Ns_DbProc procs[] = {
     {DbFn_Cancel,       (ns_funcptr_t)Flush},
     {DbFn_ResetHandle,  (ns_funcptr_t)ResetHandle},
     {DbFn_ServerInit,   (ns_funcptr_t)Ns_PgServerInit},
-if NS_VERSION_NUM >= 50000
+#if NS_VERSION_NUM >= 50000
     {DbFn_Version,      (ns_funcptr_t)VersionInfo},
 #endif
     {DbFn_End, NULL}
