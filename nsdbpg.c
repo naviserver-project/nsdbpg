@@ -1,30 +1,11 @@
 /*
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://mozilla.org/.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
- * the License for the specific language governing rights and limitations
- * under the License.
- *
- * The Original Code is AOLserver Code and related documentation
- * distributed by AOL.
- *
- * The Initial Developer of the Original Code is America Online,
- * Inc. Portions created by AOL are Copyright (C) 1999 America Online,
- * Inc. All Rights Reserved.
- *
- * Alternatively, the contents of this file may be used under the terms
- * of the GNU General Public License (the "GPL"), in which case the
- * provisions of GPL are applicable instead of those above.  If you wish
- * to allow use of your version of this file only under the terms of the
- * GPL and not to allow others to use your version of this file under the
- * License, indicate your decision by deleting the provisions above and
- * replace them with the notice and other provisions required by the GPL.
- * If you do not delete the provisions above, a recipient may use your
- * version of this file under either the License or the GPL.
+ * The Initial Developer of the Original Code and related documentation
+ * is America Online, Inc. Portions created by AOL are Copyright (C) 1999
+ * America Online, Inc. All Rights Reserved.
  *
  */
 
@@ -67,6 +48,7 @@ static int           GetRow(const Ns_DbHandle *handle, Ns_Set *row) NS_GNUC_NONN
 static int           GetRowCount(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode Flush(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+static Tcl_Obj*      VersionInfo(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
@@ -89,6 +71,9 @@ static const Ns_DbProc procs[] = {
     {DbFn_Cancel,       (ns_funcptr_t)Flush},
     {DbFn_ResetHandle,  (ns_funcptr_t)ResetHandle},
     {DbFn_ServerInit,   (ns_funcptr_t)Ns_PgServerInit},
+if NS_VERSION_NUM >= 50000
+    {DbFn_Version,      (ns_funcptr_t)VersionInfo},
+#endif
     {DbFn_End, NULL}
 };
 
@@ -154,6 +139,95 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
     }
 
     return status;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ServerVersionNumber --
+ *
+ *      Query the database for its version string (via “SELECT version();”),
+ *      parse the returned value (expected to be of the form “PostgreSQL
+ *      X.Y”), and convert it into a numeric code (major * 10000 + minor).
+ *
+ * Results:
+ *      An integer of the form (major * 10000 + minor):
+ *        - >0 on success,
+ *        - 0 if the query returned no row,
+ *        - –1 if the version string could not be parsed.
+ *
+ * Side effects:
+ *      Executes a one-row SQL query, allocates and uses an Ns_Set for the result,
+ *      and logs the raw version string.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+ServerVersionNumber(Ns_DbHandle *handle) {
+    int result = 0;
+    Ns_Set *rowPtr = Ns_Db1Row(handle, "SELECT version();");
+
+    if (rowPtr != NULL) {
+        int major, minor;
+        /*
+         * Parse version from returned string, expecting format "PostgreSQL X.Y"
+         */
+        if (sscanf(Ns_SetValue(rowPtr,0), "PostgreSQL %d.%d", &major, &minor) == 2) {
+            /*
+             * We follow the scheme of PQlibVersion where the major version is
+             * multiplied by 10000 and the minor version number is added.
+             */
+            result = (major * 10000) + minor;
+        } else {
+            result = -1;
+        }
+        Ns_SetFree(rowPtr);
+    }
+    return result;
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * VersionInfo --
+ *
+ *      Gather the PostgreSQL client and server version numbers and return
+ *      them in a Tcl dictionary object.  The client version is obtained via
+ *      PQlibVersion() (if available), and the server version is retrieved by
+ *      querying "SELECT version();" and parsed by ServerVersionNumber().
+ *
+ * Results:
+ *      Returns a newly created Tcl_Obj* dict containing two entries:
+ *        "clientversion" : (int) client library version (or 0 if unavailable)
+ *        "serverversion" : (int) server version encoded as (major * 10000 + minor),
+ *                          0 if the query returned no row, or -1 on parse failure.
+ *
+ * Side effects:
+ *      Allocates a Tcl dictionary and integer objects for the version values.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static Tcl_Obj *
+VersionInfo(Ns_DbHandle *handle)
+{
+    Tcl_Obj *dictObj = Tcl_NewDictObj();
+    int      serverVersion = 0, clientVersion = 0;
+
+#if defined(PG_VERSION_NUM) && PG_VERSION_NUM > 90100
+    clientVersion = PQlibVersion();
+#endif
+    serverVersion = ServerVersionNumber(handle);
+
+    Tcl_DictObjPut(NULL, dictObj,
+                   Tcl_NewStringObj("clientversion", 13),
+                   Tcl_NewIntObj(clientVersion));
+    Tcl_DictObjPut(NULL, dictObj,
+                   Tcl_NewStringObj("serverversion", 13),
+                   Tcl_NewIntObj(serverVersion));
+    return dictObj;
 }
 
 
