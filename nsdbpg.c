@@ -48,7 +48,9 @@ static int           GetRow(const Ns_DbHandle *handle, Ns_Set *row) NS_GNUC_NONN
 static int           GetRowCount(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode Flush(const Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+#if NS_VERSION_NUM >= 50000
 static Tcl_Obj*      VersionInfo(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
+#endif
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
@@ -163,7 +165,8 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
  *----------------------------------------------------------------------
  */
 
-static int
+#if NS_VERSION_NUM >= 50000
+ static int
 ServerVersionNumber(Ns_DbHandle *handle) {
     int result = 0;
     Ns_Set *rowPtr = Ns_Db1Row(handle, "SELECT version();");
@@ -186,7 +189,6 @@ ServerVersionNumber(Ns_DbHandle *handle) {
     }
     return result;
 }
-
 
 /*
  *----------------------------------------------------------------------
@@ -229,6 +231,7 @@ VersionInfo(Ns_DbHandle *handle)
                    Tcl_NewIntObj(serverVersion));
     return dictObj;
 }
+#endif
 
 
 /*
