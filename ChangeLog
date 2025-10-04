@@ -1,3 +1,154 @@
+commit 34cf38b00048a683255c11a5b5238e8e10a99e14
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-06-18
+
+    removed compiler warning, when compiled with NaviServer 4.99
+
+M	nsdbpg.c
+
+commit 038749b6c289e4ae1cd8f2ce8d524fbebcfa9eae
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-04-23
+
+    fixed typo
+
+M	nsdbpg.c
+
+commit 818564f3197740f49096ec7d200fabf9e544ee94
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-04-23
+
+    nsdbpg: bumped version to v2.9, updated MPL 2.0 license, and expose PostgreSQL version info
+    
+    - updated license headers to Mozilla Public License v2.0 (same as in NaviServer 5)
+    - bumped NSDBPG_VERSION from “2.8” to “2.9”
+    - Add a new DbFn_Version entry in the PostgreSQL driver proc
+    - New function VersionInfo(): create a Tcl dict with two keys:
+       - "clientversion" → PQlibVersion() (if available, else 0)
+       - "serverversion" → result of ServerVersionNumber()
+    - wire VersionInfo() as the driver’s versionProc so that "ns_db info"
+      can include PostgreSQL client/server versions
+    
+    These changes add first‐class support for querying Postgres version
+    metadata from Tcl, when use with an uptodate version of NaviServer.
+
+M	dbpg.h
+M	nsdbpg.c
+M	tclcmds.c
+
+commit e679fac5397bde63696a4806e023d3d6446d9efd
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-04-15
+
+    removed trailing garbage
+
+M	README.md
+
+commit 6603f4830f22663d01ed7f157251ea8c4889c51b
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-04-15
+
+    improved wording
+
+M	README.md
+
+commit 32b30e2e37db6068cfc7a82ea1113a10c3592b4b
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-04-15
+
+    converted README file to markdown
+
+D	README
+A	README.md
+
+commit 2c522514007fb4be0c7aa595638d859a9b33e5de
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-02-25
+
+    replaced deprecated Ns_DString calls
+
+M	nsdbpg.c
+M	tclcmds.c
+
+commit 02093f52fff8ac430a94b90974994c111c5be4fe
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2025-02-25
+
+    bumped version of actual PostgreSQL to 17
+
+M	README
+
+commit 5232c61ff982ab232827746298257d7859010e28
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2024-11-03
+
+    make compilation clean when using PostgreSQL 17; improved spelling
+
+M	README
+M	nsdbpg.c
+
+commit 44de0b0d261529532e4dc24d9db8261729868fe2
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2024-10-02
+
+    tcl9: get rid of TCL_OBJC_T
+    
+    The compile macro TCL_OBJC_T was just necessary during the long and
+    winding road leading to Tcl9. It is not needed anymore, since Tcl uses
+    now everywhere TCL_SIZE_T.
+
+M	dbpg.h
+M	tclcmds.c
+
+commit 1bc74b5b3806e0920d27ec78db3924274f6e3495
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2024-10-02
+
+    tcl9: improve cleaness of compilation when -Wmissing-field-initializers is turned on
+
+M	tclcmds.c
+
+commit 298f32c9d35af71fa76a03cfffa3050b1b0cdc3a
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2024-10-01
+
+    Tcl9 fix: adjust size of nargs for Ns_ObjvArgs to TCL_SIZE_T
+
+M	tclcmds.c
+
+commit 772991818c4268ec0e3b0df0f0050dece3d4adce
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2024-09-28
+
+    improved Tcl9 compatibility: get int obj type from temporary tcl object instead of API call
+
+M	tclcmds.c
+
+commit 2d7130780471a69733d1135e3cb75163e532d835
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2024-02-03
+
+    improved type cleanness
+
+M	dbpg.h
+M	tclcmds.c
+
+commit 11cd64bda0c537f3e0e26ab73796f0dce78c8bd2
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-11-19
+
+    provide clean compilation with Tcl9
+
+M	tclcmds.c
+
+commit 0a4999cbc25a088f12498fc5ede83c6dccdf2a4e
+Author: Gustaf Neumann <neumann@wu-wien.ac.at>
+Date:   2023-11-19
+
+    separate concerns of installation directory of NaviServer and location of PostgreSQL libraries and includes
+
+M	README
+
 commit c3a96d9ef4c0d85addd61d4c2d099a77995e0e6c
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2023-10-31
@@ -20,8 +171,8 @@ Date:   2023-10-31
     irregularity passing Tcl_DStrings to functions. The function
     Tcl_ExternalToUtfDString() blindly initializes the passed-in pointer
     to a Tcl_DString, which will lead to a memory leak, if this
-    Tcl_DString has already a preallocated size.  So, e.g., the usual
-    idiom setting the length of the dsPtr to 0 to keep the preallocated
+    Tcl_DString has already a pre-allocated size.  So, e.g., the usual
+    idiom setting the length of the dsPtr to 0 to keep the pre-allocated
     dynamic memory causes a leak.
 
 M	nsdbpg.c
@@ -230,7 +381,7 @@ Date:   2021-11-21
     - improved function naming
     - added missing nonnull asserts
     - reduced number of required strlen() operations
-    - bumped version to 2.6
+    - bumped verison to 2.6
 
 M	dbpg.h
 M	nsdbpg.c
@@ -240,7 +391,7 @@ commit 90185dd160cf06f9c4dc797280c13dcc66af49ba
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2021-11-19
 
-    restrict bind vars to start with an alpha character.
+    restrict bind vars to start with an alpha characer.
     
     This change is required for the slice notation of SQL arrays
     in PostgreSQL
@@ -393,7 +544,7 @@ commit 5379680169e05cd59bb423fa91cb5c91ada51011
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2019-09-11
 
-    use static definitions when possible
+    use static defintions when possible
     don't use default, when all cases are enumerated
 
 M	nsdbpg.c
@@ -527,7 +678,7 @@ commit f63b228ad86d2506c3abac13c0f521d1f571cdbf
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2017-10-17
 
-    bump advertised pg version number
+    bump advertized pg version number
 
 M	README
 
@@ -689,7 +840,7 @@ commit c61e8cc3080cdae5ca7a68fe4605d7debe61d5c8
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2016-08-01
 
-    - don't't use boolean as argument of comparison
+    - dont't use boolean as argument of comparison
 
 M	tclcmds.c
 
@@ -723,7 +874,7 @@ commit 4e7822a0178c018f44bf37e46f71f1502d35e449
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2016-07-13
 
-    - use Ns_ReturnCode on more occasions
+    - use Ns_ReturnCode on more occations
 
 M	nsdbpg.c
 M	tclcmds.c
@@ -814,7 +965,7 @@ commit 21b5cef06f5480765bccb1a99027b5a6a7dd2294
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2016-01-17
 
-    - fix conflict on prototpyes
+    - fix confict on prototpyes
 
 M	tclcmds.c
 
@@ -988,7 +1139,7 @@ Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-11-14
 
     - add "default" labels to switch statements
-    - add editor hints to keep formatting conventions, prefer spaces over tabs
+    - add editor hints to to keep formatting conventions, prefer spaces over tabs
 
 M	tclcmds.c
 
@@ -1026,7 +1177,7 @@ commit 079cb2416957c79849e85687c41c496e385bff2c
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-11-06
 
-    - avound implicit signed/unsigned conversion
+    - avound implicit signed/unsigned converison
 
 M	tclcmds.c
 
@@ -1057,7 +1208,7 @@ commit 32da98d698e4f5ee81d668194c45eea66bc07789
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-11-01
 
-    - prefer boolean expressions
+    - prefer boolen expressions
 
 M	nsdbpg.c
 M	tclcmds.c
@@ -1158,7 +1309,7 @@ commit c1d2df7e1efa5537364ef88ed0f498f655181fbe
 Author: Gustaf Neumann <neumann@wu-wien.ac.at>
 Date:   2014-09-19
 
-    - use angle brackets for include filenames
+    - use angle brackets for include file names
 
 M	dbpg.h
 
@@ -1337,7 +1488,7 @@ commit 0fac6bf6677deade5fb5f6877f52197a1157e6fb
 Author: Vlad Seryakov <vlad@crystalballinc.com>
 Date:   2007-05-23
 
-    Set NAVISERVER build variable conditionally
+    Set NAVISERVER build variable conditionaly
 
 M	Makefile
 
@@ -1356,7 +1507,7 @@ commit cc9f1451d99a42a213bf8c5f9c00ce6ff718a1cc
 Author: Vlad Seryakov <vlad@crystalballinc.com>
 Date:   2005-08-08
 
-    Use new style ns_strdup etc. functions inplace of deprecated Ns_* functions
+    Use new style ns_strdup etc. functions inplace of depreciated Ns_* functions
 
 M	tclcmds.c
 
@@ -1364,7 +1515,7 @@ commit 598b9f5d13eee0965b7dcdccba358f6ca3f3f739
 Author: Vlad Seryakov <vlad@crystalballinc.com>
 Date:   2005-08-01
 
-    Use Ns_TclRegisterTrace inplace of deprecated Ns_TclInitInterps
+    Use Ns_TclRegisterTrace inplace of depreciated Ns_TclInitInterps
 
 M	tclcmds.c
 
@@ -1404,7 +1555,7 @@ Date:   2005-06-15
     * nsdbpg.c: Untabify, reindent and reorganize. Drop emulation code
     for AOLserver 2.x ns_table etc. commands.
     
-    * tclcmds.c: Split extra Tcl commands and bind variable emulation
+    * tclcmds.c: Split extra Tcl commands and bind vaiable emulation
     code into new file.
     
     * nsdbpg.h:
