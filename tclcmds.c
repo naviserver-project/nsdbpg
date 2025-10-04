@@ -1595,7 +1595,7 @@ write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, bool to_
 static int
 blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *valueObj)
 {
-    int                  segment, result = TCL_OK;
+    int                  segment, result = TCL_OK, n;
     TCL_SIZE_T           value_len;
     unsigned char        out_buf[8001];
     const unsigned char *value_ptr;
@@ -1608,16 +1608,18 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *
 
     value_ptr = Tcl_GetByteArrayFromObj(valueObj, &value_len);
 
-    query[0] = '\0';
-    strcpy(query, "INSERT INTO LOB_DATA VALUES(");
-    strcat(query, blob_id);
-    strcat(query, ",");
-    segment_pos = query + strlen(query);
+    n = snprintf(query, sizeof(query), "INSERT INTO LOB_DATA VALUES(%s,", blob_id);
+    if (n < 0 || (size_t)n >= sizeof(query)) {
+        Ns_TclPrintfResult(interp, "blob_put: SQL prefix too long");
+        return TCL_ERROR;
+    }
+    segment_pos = query + + (size_t)n;
     segment = 1;
 
     while (value_len > 0) {
-        int i, j;
+        int        i, j, m;
         TCL_SIZE_T segment_len = value_len > 6000 ? 6000 : value_len;
+        size_t     avail;
 
         value_len -= segment_len;
         for (i = 0, j = 0; i < segment_len; i += 3, j+=4) {
@@ -1625,17 +1627,23 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *
         }
         out_buf[j] = UCHAR('\0');
 
-        sprintf(segment_pos, "%d, %" PRITcl_Size ", '%s')",
-                segment, segment_len, out_buf);
+        avail = sizeof(query) - (size_t)(segment_pos - query);
+        m = snprintf(segment_pos, avail, "%d, %" PRITcl_Size ", '%s')",
+                     segment, segment_len, out_buf);
+
+        if (m < 0 || (size_t)m >= avail) {
+            Ns_TclPrintfResult(interp, "blob_put: SQL buffer too small");
+            result = TCL_ERROR;
+            break;
+        }
 
         if (Ns_DbExec(handle, query) != NS_DML) {
             Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
             result = TCL_ERROR;
             break;
-        } else {
-            value_ptr += segment_len;
-            segment++;
         }
+        value_ptr += segment_len;
+        segment++;
     }
 
     return result;
@@ -1665,28 +1673,41 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
                            filename, strerror(errno));
         result = TCL_ERROR;
     } else {
-        int           segment;
+        int           segment, n;
         ssize_t       readlen;
         char         *segment_pos;
         unsigned char in_buf[6000], out_buf[8001];
         char          query[10000];
 
-        query[0] = '\0';
-        strcpy(query, "INSERT INTO LOB_DATA VALUES(");
-        strcat(query, blob_id);
-        strcat(query, ",");
-        segment_pos = query + strlen(query);
+        n = snprintf(query, sizeof(query),
+                     "INSERT INTO LOB_DATA VALUES(%s,", blob_id);
+        if (n < 0 || (size_t)n >= sizeof(query)) {
+            Ns_TclPrintfResult(interp, "blob_put: SQL prefix too long");
+            return TCL_ERROR;
+        }
+        segment_pos = query + (size_t)n;
         segment = 1;
 
         readlen = ns_read(fd, in_buf, 6000u);
         while (readlen > 0) {
-            int i, j;
+            int    i, j, m;
+            size_t avail;
 
             for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
                 encode3(&in_buf[i], &out_buf[j]);
             }
             out_buf[j] = UCHAR('\0');
-            sprintf(segment_pos, "%d, %" PRIdz ", '%s')", segment, readlen, out_buf);
+
+            avail = sizeof(query) - (size_t)(segment_pos - query);
+            m = snprintf(segment_pos, avail,
+                         "%d, %" PRIdz ", '%s')",
+                         segment, (ssize_t)readlen, out_buf);
+            if (m < 0 || (size_t)m >= avail) {
+                Ns_TclPrintfResult(interp, "blob_put: SQL buffer too small");
+                result = TCL_ERROR;
+                break;
+            }
+
             if (Ns_DbExec(handle, query) != NS_DML) {
                 Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
                 result = TCL_ERROR;
