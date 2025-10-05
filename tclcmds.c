@@ -1595,11 +1595,11 @@ write_to_stream(int fd, Ns_Conn *conn, const void *bufp, size_t length, bool to_
 static int
 blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *valueObj)
 {
-    int                  segment, result = TCL_OK, n;
-    TCL_SIZE_T           value_len;
+    int                  segment = 1, result = TCL_OK;
+    TCL_SIZE_T           value_len, prefix_len;
     unsigned char        out_buf[8001];
     const unsigned char *value_ptr;
-    char                 query[10000], *segment_pos;
+    Tcl_DString          ds;
 
     NS_NONNULL_ASSERT(interp != NULL);
     NS_NONNULL_ASSERT(handle != NULL);
@@ -1608,44 +1608,39 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, Tcl_Obj *
 
     value_ptr = Tcl_GetByteArrayFromObj(valueObj, &value_len);
 
-    n = snprintf(query, sizeof(query), "INSERT INTO LOB_DATA VALUES(%s,", blob_id);
-    if (n < 0 || (size_t)n >= sizeof(query)) {
-        Ns_TclPrintfResult(interp, "blob_put: SQL prefix too long");
-        return TCL_ERROR;
-    }
-    segment_pos = query + + (size_t)n;
-    segment = 1;
+    /* Build SQL prefix once: INSERT ... VALUES(<blob_id>, */
+    Tcl_DStringInit(&ds);
+    Ns_DStringPrintf(&ds, "INSERT INTO LOB_DATA VALUES(%s,", blob_id);
+    prefix_len = ds.length;
 
     while (value_len > 0) {
-        int        i, j, m;
+        int        i, j;
         TCL_SIZE_T segment_len = value_len > 6000 ? 6000 : value_len;
-        size_t     avail;
 
+        /* encode (6000 -> <= 8000) */
         value_len -= segment_len;
         for (i = 0, j = 0; i < segment_len; i += 3, j+=4) {
             encode3(&value_ptr[i], &out_buf[j]);
         }
         out_buf[j] = UCHAR('\0');
 
-        avail = sizeof(query) - (size_t)(segment_pos - query);
-        m = snprintf(segment_pos, avail, "%d, %" PRITcl_Size ", '%s')",
-                     segment, segment_len, out_buf);
+        /* rebuild tail on each loop */
+        Tcl_DStringSetLength(&ds, prefix_len);
+        Ns_DStringPrintf(&ds, "%d, %" PRITcl_Size ", '", segment, (TCL_SIZE_T)segment_len);
+        Tcl_DStringAppend(&ds, (const char *)out_buf, j);  /* no NULs in base64 */
+        Tcl_DStringAppend(&ds, "')", 2);
 
-        if (m < 0 || (size_t)m >= avail) {
-            Ns_TclPrintfResult(interp, "blob_put: SQL buffer too small");
-            result = TCL_ERROR;
-            break;
-        }
-
-        if (Ns_DbExec(handle, query) != NS_DML) {
+        if (Ns_DbExec(handle, ds.string) != NS_DML) {
             Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
             result = TCL_ERROR;
             break;
         }
         value_ptr += segment_len;
+        value_len -= segment_len;
         segment++;
     }
 
+    Tcl_DStringFree(&ds);
     return result;
 }
 
@@ -1673,51 +1668,44 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, const char *blob_id, cons
                            filename, strerror(errno));
         result = TCL_ERROR;
     } else {
-        int           segment, n;
+        int           segment = 1;
         ssize_t       readlen;
-        char         *segment_pos;
         unsigned char in_buf[6000], out_buf[8001];
-        char          query[10000];
+        TCL_SIZE_T    prefix_len;
+        Tcl_DString   ds;
 
-        n = snprintf(query, sizeof(query),
-                     "INSERT INTO LOB_DATA VALUES(%s,", blob_id);
-        if (n < 0 || (size_t)n >= sizeof(query)) {
-            Ns_TclPrintfResult(interp, "blob_put: SQL prefix too long");
-            return TCL_ERROR;
-        }
-        segment_pos = query + (size_t)n;
-        segment = 1;
+        /* Build SQL prefix once: INSERT ... VALUES(<blob_id>, */
+        Tcl_DStringInit(&ds);
+        Ns_DStringPrintf(&ds, "INSERT INTO LOB_DATA VALUES(%s,", blob_id);
+        prefix_len = ds.length;
 
-        readlen = ns_read(fd, in_buf, 6000u);
+        readlen = ns_read(fd, in_buf, (size_t)6000u);
         while (readlen > 0) {
-            int    i, j, m;
-            size_t avail;
+            int    i, j;
 
-            for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
+            for (i = 0, j = 0; i < readlen; i += 3, j += 4) {
                 encode3(&in_buf[i], &out_buf[j]);
             }
             out_buf[j] = UCHAR('\0');
 
-            avail = sizeof(query) - (size_t)(segment_pos - query);
-            m = snprintf(segment_pos, avail,
-                         "%d, %" PRIdz ", '%s')",
-                         segment, (ssize_t)readlen, out_buf);
-            if (m < 0 || (size_t)m >= avail) {
-                Ns_TclPrintfResult(interp, "blob_put: SQL buffer too small");
+            /* rebuild tail on each loop */
+            Tcl_DStringSetLength(&ds, prefix_len);
+            Ns_DStringPrintf(&ds, "%d, %" PRIdz ", '", segment, readlen);
+            Tcl_DStringAppend(&ds, (const char *)out_buf, j);
+            Tcl_DStringAppend(&ds, "')", 2);
+
+            if (Ns_DbExec(handle, ds.string) != NS_DML) {
+                Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
                 result = TCL_ERROR;
                 break;
             }
 
-            if (Ns_DbExec(handle, query) != NS_DML) {
-                Ns_TclPrintfResult(interp, "Error inserting data into BLOB");
-                result = TCL_ERROR;
-                break;
-            } else {
-                readlen = ns_read(fd, in_buf, 6000u);
-                segment++;
-            }
+            readlen = ns_read(fd, in_buf, (size_t)6000);
+            segment++;
         }
+
         (void) ns_close(fd);
+        Tcl_DStringFree(&ds);
     }
 
     return result;
