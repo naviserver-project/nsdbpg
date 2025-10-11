@@ -273,6 +273,11 @@ DbType(Ns_DbHandle *UNUSED(handle))
  *
  *----------------------------------------------------------------------
  */
+#ifdef NS_HAVE_PARSEHOST2_CONST
+# define NS_PARSE_HOST_CONST const
+#else
+# define NS_PARSE_HOST_CONST
+#endif
 
 static Ns_ReturnCode
 OpenDb(Ns_DbHandle *handle)
@@ -289,7 +294,7 @@ OpenDb(Ns_DbHandle *handle)
         Connection   *pconn;
         PGconn       *pgconn;
         Tcl_DString   ds;
-        const char   *host, *portStart = NULL;
+        NS_PARSE_HOST_CONST char *host, *portStart = NULL;
         char         *db = NULL, *end;
 
         Tcl_DStringInit(&ds);
