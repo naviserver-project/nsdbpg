@@ -289,7 +289,8 @@ OpenDb(Ns_DbHandle *handle)
         Connection   *pconn;
         PGconn       *pgconn;
         Tcl_DString   ds;
-        char         *host, *portStart = NULL, *db = NULL, *end;
+        const char   *host, *portStart = NULL;
+        char         *db = NULL, *end;
 
         Tcl_DStringInit(&ds);
         Tcl_DStringAppend(&ds, handle->datasource, TCL_INDEX_NONE);

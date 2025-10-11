@@ -592,8 +592,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
         for (var_p = bind_variables, frag_p = sql_fragments;
              var_p != NULL || frag_p != NULL;
              ) {
-            const char *p;
-            char       *value = NULL;
+            const char *p, *value = NULL;
             TCL_SIZE_T  valueLength = TCL_INDEX_NONE;
 
             if (frag_p != NULL) {
@@ -643,7 +642,7 @@ SqlObjToString(Tcl_Interp *interp, Ns_Set *bindSet, Tcl_Obj *sqlObj, Tcl_DString
                     /*
                      * The bind values are provided explicitly via an ns_set.
                      */
-                    value = (char *)Ns_SetGet(bindSet, var_p->chars);
+                    value = Ns_SetGet(bindSet, var_p->chars);
                     if (value != NULL) {
                         valueLength = (TCL_SIZE_T)strlen(value);
                     }
@@ -1054,7 +1053,7 @@ PgBindExecObjCmd(ClientData clientData, Tcl_Interp *interp, TCL_SIZE_T objc, Tcl
 int
 PgBindObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T objc, Tcl_Obj *const* objv)
 {
-    char        *handleString = (char*)NS_EMPTY_STRING;
+    char        *handleString;
     Ns_DbHandle *handle;
     int          result;
     TCL_SIZE_T   nargs;
