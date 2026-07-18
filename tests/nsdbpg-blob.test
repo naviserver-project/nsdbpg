@@ -1,0 +1,313 @@
+ad_page_contract {
+    Test the legacy ns_pg pseudo-BLOB commands.
+
+    The page creates a temporary lob_data table and rolls back all
+    database changes when finished.
+} {
+}
+
+set results {}
+set source_file ""
+set output_file ""
+
+proc blob_test_record {name expected script} {
+    upvar 1 results results
+
+    set code [catch {uplevel 1 $script} value options]
+    #ns_log notice "DEBUG: $name $script-> $code value <$value>"
+
+    if {$code == 0} {
+        set actual $value
+        set passed [expr {$actual eq $expected}]
+        set detail "returned: [list $actual]"
+    } else {
+        set passed 0
+        set detail "error: $value"
+    }
+
+    lappend results [list $name $passed $detail]
+}
+
+proc blob_test_expect_error {name script} {
+    upvar 1 results results
+
+    set code [catch {uplevel 1 $script} value options]
+
+    if {$code != 0} {
+        set passed 1
+        set detail "rejected: $value"
+    } else {
+        set passed 0
+        set detail "unexpectedly accepted; returned: [list $value]"
+    }
+
+    lappend results [list $name $passed $detail]
+}
+
+db_with_handle db {
+    #
+    # An explicit transaction is required by blob_put and blob_dml_file.
+    # ROLLBACK also removes the temporary table and all inserted rows.
+    #
+    ns_db dml $db BEGIN
+
+    set setup_code [catch {
+        ns_db dml $db {
+            CREATE TEMPORARY TABLE lob_data (
+                lob_id   bigint  NOT NULL,
+                segment  integer NOT NULL,
+                byte_len integer NOT NULL,
+                data     bytea   NOT NULL,
+                PRIMARY KEY (lob_id, segment)
+            ) ON COMMIT DROP
+        }
+
+        #
+        # Create an input file for blob_dml_file.
+        #
+        set source_file [ns_mktemp]
+        set f [open $source_file wb]
+        fconfigure $f -translation binary -encoding binary
+        puts -nonewline $f "file-BLOB-content"
+        close $f
+
+        #
+        # ------------------------------------------------------------
+        # Valid-operation tests
+        # ------------------------------------------------------------
+        #
+
+        blob_test_record \
+            "blob_put accepts a numeric ID" \
+            "ok" {
+                ns_pg blob_put $db 101 "memory-BLOB-content"
+                set result ok
+            }
+
+        blob_test_record \
+            "blob_get retrieves the value stored by blob_put" \
+            "memory-BLOB-content" {
+                ns_pg blob_get $db 101
+            }
+
+        blob_test_record \
+            "blob_dml_file accepts a numeric ID" \
+            "ok" {
+                ns_pg blob_dml_file $db 201 $source_file
+                set result ok
+            }
+
+        blob_test_record \
+            "blob_get retrieves the value stored by blob_dml_file" \
+            "file-BLOB-content" {
+                ns_pg blob_get $db 201
+            }
+
+        #
+        # blob_select_file reaches the same vulnerable SELECT construction
+        # as blob_get, via blob_send_to_stream().
+        #
+        set output_file [ns_mktemp]
+
+        blob_test_record \
+            "blob_select_file accepts a numeric ID" \
+            "ok" {
+                ns_pg blob_select_file $db 101 $output_file
+                set result ok
+            }
+
+        blob_test_record \
+            "blob_select_file writes the expected value" \
+            "memory-BLOB-content" {
+                set f [open $output_file rb]
+                fconfigure $f -translation binary -encoding binary
+                set value [read $f]
+                close $f
+                set value
+            }
+
+        #
+        # ------------------------------------------------------------
+        # Harmless SQL-injection probes
+        # ------------------------------------------------------------
+        #
+        # These are valid PostgreSQL scalar expressions. In the vulnerable
+        # implementation they are copied verbatim into the SQL statement.
+        #
+        # After the fix, every test below must fail while converting blobId
+        # to Tcl_WideInt. No SQL statement should be sent to PostgreSQL.
+        #
+
+        blob_test_expect_error \
+            "blob_get rejects an SQL expression as blobId" {
+                ns_pg blob_get $db {(SELECT 101)}
+            }
+
+        blob_test_expect_error \
+            "blob_put rejects an SQL expression as blobId" {
+                ns_pg blob_put $db {(SELECT 102)} \
+                    "injected-memory-content"
+            }
+
+        blob_test_expect_error \
+            "blob_dml_file rejects an SQL expression as blobId" {
+                ns_pg blob_dml_file $db {(SELECT 202)} $source_file
+            }
+
+        blob_test_expect_error \
+            "blob_select_file rejects an SQL expression as blobId" {
+                ns_pg blob_select_file $db {(SELECT 101)} $output_file
+            }
+
+        #
+        # Verify that rejected write probes did not create rows.
+        #
+        blob_test_record \
+            "Rejected blob_put did not insert LOB 102" \
+            "0" {
+                set r [ns_db 0or1row $db {
+                    SELECT count(*) AS count
+                    FROM lob_data
+                    WHERE lob_id = 102
+                }]
+                ns_set get $r count
+            }
+
+        blob_test_record \
+            "Rejected blob_dml_file did not insert LOB 202" \
+            "0" {
+                set r [ns_db 0or1row $db {
+                    SELECT count(*) AS count
+                    FROM lob_data
+                    WHERE lob_id = 202
+                }]
+                ns_set get $r count
+            }
+
+    } setup_error setup_options]
+
+    #
+    # Always discard the temporary table and its contents.
+    #
+    catch {ns_db dml $db ROLLBACK}
+
+    if {$setup_code != 0} {
+        lappend results [list \
+            "Test execution" \
+            0 \
+            "unexpected error: $setup_error"]
+    }
+}
+
+foreach filename [list $source_file $output_file] {
+    if {$filename ne "" && [file exists $filename]} {
+        catch {file delete -- $filename}
+    }
+}
+
+#
+# Produce a small HTML report.
+#
+set passed_count 0
+set failed_count 0
+set rows ""
+
+foreach result $results {
+    lassign $result name passed detail
+
+    if {$passed} {
+        incr passed_count
+        set status PASS
+        set class pass
+    } else {
+        incr failed_count
+        set status FAIL
+        set class fail
+    }
+
+    append rows [subst {
+        <tr class="$class">
+          <td>[ns_quotehtml $name]</td>
+          <td>$status</td>
+          <td><code>[ns_quotehtml $detail]</code></td>
+        </tr>
+    }]
+}
+
+set expected_state [expr {
+    $failed_count == 0
+    ? "The BLOB identifier validation appears to be active."
+    : "One or more tests failed. Before applying the fix, failures of the injection-rejection tests are expected."
+}]
+
+set page [subst {
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>nsdbpg BLOB security tests</title>
+  <style>
+    body {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      font: 16px/1.45 system-ui, sans-serif;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: .55rem .7rem;
+      border: 1px solid #ccc;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eee;
+    }
+    tr.pass td:nth-child(2) {
+      color: #176b2c;
+      font-weight: bold;
+    }
+    tr.fail td:nth-child(2) {
+      color: #a40000;
+      font-weight: bold;
+    }
+    code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .summary {
+      padding: .8rem;
+      background: #f2f5f8;
+      border-left: 4px solid #557;
+    }
+  </style>
+</head>
+<body>
+  <h1>nsdbpg BLOB security tests</h1>
+
+  <p class="summary">
+    Passed: <strong>$passed_count</strong>;
+    failed: <strong>$failed_count</strong>.
+    [ns_quotehtml $expected_state]
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Test</th>
+        <th>Result</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      $rows
+    </tbody>
+  </table>
+</body>
+</html>
+}]
+
+ns_return 200 text/html $page
