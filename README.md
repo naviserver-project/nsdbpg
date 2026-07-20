@@ -151,13 +151,13 @@ make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/ install
 On systems using MacPorts, you might execute:
 
 ```bash
-PGPATH=postgresql17 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
+PGPATH=postgresql17 make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
 ```
 
 For additional code checking using cppcheck, consider:
 
 ```bash
-PGPATH=postgresql17 && make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
+PGPATH=postgresql17 make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
 ```
 
 Refer to the Makefile for further details regarding the module build process.
