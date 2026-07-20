@@ -1,6 +1,15 @@
 ## What is this?
 
-This module provides a straightforward database services driver for NaviServer. It acts as an intermediary between the NaviServer database-independent `nsdb` module and the API of a specific DBMS. In essence, the driver establishes connections, executes SQL commands, and converts the results into the format required by `nsdb`. This driver is designed for the PostgreSQL ORDBMS, developed by The PostgreSQL Global Development Group, and serves as the official driver for the OpenACS project. Since PostgreSQL is available on most Unix systems, ensure that it is installed on your system before using this driver. For additional details or to download PostgreSQL, visit:
+This module provides a straightforward database services driver for
+NaviServer. It acts as an intermediary between the NaviServer
+database-independent `nsdb` module and the API of a specific DBMS. In
+essence, the driver establishes connections, executes SQL commands,
+and converts the results into the format required by `nsdb`. This
+driver is designed for the PostgreSQL ORDBMS, developed by The
+PostgreSQL Global Development Group, and serves as the official driver
+for the OpenACS project. Since PostgreSQL is available on most Unix
+systems, ensure that it is installed on your system before using this
+driver. For additional details or to download PostgreSQL, visit:
 
     http://www.postgresql.org
 
@@ -53,7 +62,9 @@ version and source revision through `ns_server modules`.
 
 ## Sample Configuration
 
-Below is an example configuration snippet for NaviServer. This example assumes that the Tcl variables `db_host`, `db_port`, `db_name`, and `db_user` have been defined appropriately.
+Below is an example configuration snippet for NaviServer. This example
+assumes that the Tcl variables `db_host`, `db_port`, `db_name`, and
+`db_user` have been defined appropriately.
 
 ```tcl
 ns_section ns/db/pools {
