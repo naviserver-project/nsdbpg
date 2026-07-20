@@ -12,9 +12,23 @@ For the latest updates and modifications, please refer to the Changelog.
 
 ## How Does It Work?
 
-Database driver modules for NaviServer resemble typical modules but are loaded in a different manner. Instead of being declared under the `[ns/server/<server-name>/modules]` section, a database driver is registered in the `[ns/db/drivers]` section, and loading is managed automatically by `nsdb`. Typically, the driver’s initialization function simply calls `nsdb`'s `Ns_DbRegisterDriver()` with an array of function pointers. These functions later facilitate database connections, query execution, and result processing—a design approach similar to ODBC on Windows.
+Database driver modules for NaviServer resemble typical modules but
+are loaded in a different manner. Instead of being declared under the
+`[ns/server/<server-name>/modules]` section, a database driver is
+registered in the `[ns/db/drivers]` section, and loading is managed
+automatically by `nsdb`. Typically, the driver’s initialization
+function simply calls `nsdb`'s `Ns_DbRegisterDriver()` with an array
+of function pointers. These functions later facilitate database
+connections, query execution, and result processing—a design approach
+similar to ODBC on Windows.
 
-In addition to basic functions for opening connections, selecting data, and retrieving rows, the driver also supplies system catalog functions and a virtual server initialization routine. Each time `nsdb` is loaded into a virtual server, the initialization function `Ns_PgServerInit` is executed. This routine registers the `"ns_pg"` Tcl command in the server’s Tcl interpreters, enabling Tcl scripts to access information about an active PostgreSQL connection.
+In addition to basic functions for opening connections, selecting
+data, and retrieving rows, the driver also supplies system catalog
+functions and a virtual server initialization routine. Each time
+`nsdb` is loaded into a virtual server, the initialization function
+`Ns_PgServerInit` is executed. This routine registers the `"ns_pg"`
+Tcl command in the server’s Tcl interpreters, enabling Tcl scripts to
+access information about an active PostgreSQL connection.
 
 **Contributors to this file include:**
 
