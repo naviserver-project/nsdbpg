@@ -29,6 +29,12 @@ In addition to basic functions for opening connections, selecting data, and retr
 
 *Original example driver developed by Jim Davidson.*
 
+
+## Runtime version information
+
+When built with a recent NaviServer version, nsdbpg reports its module
+version and source revision through `ns_server modules`.
+
 ---
 
 ## Sample Configuration
