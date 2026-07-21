@@ -83,7 +83,8 @@ ns_section ns/db/pool/pool1 {
 }
 ```
 
-If your database connection requires SSL, append the appropriate PostgreSQL "conninfo" parameters to the datasource:
+If your database connection requires SSL, append the appropriate
+PostgreSQL "conninfo" parameters to the datasource:
 
 ```tcl
 ...
@@ -97,7 +98,11 @@ If your database connection requires SSL, append the appropriate PostgreSQL "con
 
 ### ns_pg_bind
 
-`ns_pg_bind` is an enhanced version of the `ns_db` API for executing PostgreSQL statements with support for bind variables (denoted by a colon `:` in SQL statements). The bind variable values can be supplied via an `ns_set` using the `-bind` option or derived from the current calling environment.
+`ns_pg_bind` is an enhanced version of the `ns_db` API for executing
+PostgreSQL statements with support for bind variables (denoted by a
+colon `:` in SQL statements). The bind variable values can be supplied
+via an `ns_set` using the `-bind` option or derived from the current
+calling environment.
 
 ```tcl
 ns_pg_bind dml     /handle/ -bind /bind/ /sql/
@@ -109,7 +114,9 @@ ns_pg_bind exec    /handle/ -bind /bind/ /sql/
 
 ### ns_pg
 
-The `ns_pg` command provides direct interaction with the PostgreSQL client library, including support for BLOB operations (note that BLOB support may be outdated). The available `ns_pg` subcommands include:
+The `ns_pg` command provides direct interaction with the PostgreSQL
+client library, including support for BLOB operations (note that BLOB
+support may be outdated). The available `ns_pg` subcommands include:
 
 ```tcl
 ns_pg blob_dml_file    /handle/ /blobId/ /filename/
@@ -130,7 +137,9 @@ ns_pg status           /handle/
 
 ### ns_pg_prepare /sql/
 
-The `ns_pg_prepare` command returns a dictionary representing a prepared statement for the given SQL command. This dictionary includes the keys `"sql"` and `"args"`.
+The `ns_pg_prepare` command returns a dictionary representing a
+prepared statement for the given SQL command. This dictionary includes
+the keys `"sql"` and `"args"`.
 
 ---
 
