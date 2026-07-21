@@ -21,6 +21,23 @@ NS_EXTERN const int Ns_ModuleVersion;
 NS_EXPORT const int Ns_ModuleVersion = 1;
 const char *pgDbName = "PostgreSQL";
 
+#if defined(NS_MODULE_INFO_VERSION) && defined(NS_MODULE_TAG)
+NS_EXPORT Ns_ModuleInfoProc Ns_ModuleGetInfo;
+/*
+ * Provide module build and ABI information for runtime introspection.
+ */
+NS_EXPORT void
+Ns_ModuleGetInfo(Ns_ModuleInfo *infoPtr)
+{
+    Ns_ModuleInfoInit(infoPtr, NS_MODULE_INFO_VERSION,
+                      NS_MODULE_NAME,
+                      NSDBPG_VERSION,
+                      NS_MODULE_TAG,
+                      "db-driver",
+                      1u);
+}
+#endif
+
 /*
  * Define a few PostgreSQL types for speed improvement (avoid UTF8
  * conversions). The types are defined in PostgreSQL in
@@ -34,6 +51,44 @@ const char *pgDbName = "PostgreSQL";
 #define INT4OID 23
 #define INT8OID 20
 #define OIDOID 26
+
+#if defined(NS_VERSION_NUM) && NS_VERSION_NUM >= 50100
+typedef enum {
+    DateStyleUnset = 0u,
+    DateStyleIso,
+    DateStyleSql,
+    DateStylePostgres,
+    DateStyleGerman,
+    DateStyleNonEuro,
+    DateStyleEuro,
+    DateStyleIsoMdy,
+    DateStyleIsoDmy,
+    DateStyleIsoYmd,
+    DateStyleSqlMdy,
+    DateStyleSqlDmy,
+    DateStylePostgresMdy,
+    DateStylePostgresDmy,
+    DateStyleGermanDmy
+} DateStyle;
+
+static const Ns_ObjvTable dateStyleTable[] = {
+    {"ISO",            DateStyleIso},
+    {"SQL",            DateStyleSql},
+    {"POSTGRES",       DateStylePostgres},
+    {"GERMAN",         DateStyleGerman},
+    {"NONEURO",        DateStyleNonEuro},
+    {"EURO",           DateStyleEuro},
+    {"ISO, MDY",       DateStyleIsoMdy},
+    {"ISO, DMY",       DateStyleIsoDmy},
+    {"ISO, YMD",       DateStyleIsoYmd},
+    {"SQL, MDY",       DateStyleSqlMdy},
+    {"SQL, DMY",       DateStyleSqlDmy},
+    {"POSTGRES, MDY",  DateStylePostgresMdy},
+    {"POSTGRES, DMY",  DateStylePostgresDmy},
+    {"GERMAN, DMY",    DateStyleGermanDmy},
+    {NULL,             0u}
+};
+#endif
 
 /*
  * Local functions defined in this file.
@@ -106,21 +161,41 @@ Ns_DbDriverInit(const char *driver, const char *configPath)
 
     status = Ns_DbRegisterDriver(driver, &procs[0]);
     if (status == NS_OK) {
-        const char *style = Ns_ConfigGetValue(configPath, "datestyle");
+        const char *style = NULL;
+        bool haveDatestyle =
+#if NS_VERSION_NUM >= 50100
+            Ns_ConfigParameterProvided(configPath, "datestyle");
+#else
+            Ns_ConfigGetValue(configPath, "datestyle") != NULL;
+#endif
 
-        if (style != NULL) {
+        if (haveDatestyle) {
+#if NS_VERSION_NUM >= 50100
+            unsigned int styleValue;
+
+            styleValue = Ns_ConfigGetEnum(configPath, "datestyle",
+                                          dateStyleTable, DateStyleUnset);
+
+            if (styleValue != DateStyleUnset) {
+                style = Ns_ObjvTableGetString(dateStyleTable, styleValue);
+            }
+#else
+            style = Ns_ConfigGetValue(configPath, "datestyle");
             if (STRIEQ(style, "ISO") || STRIEQ(style, "SQL")
                 || STRIEQ(style, "POSTGRES") || STRIEQ(style, "GERMAN")
                 || STRIEQ(style, "NONEURO") || STRIEQ(style, "EURO")
                 ) {
+            } else {
+                Ns_Log(Error, "nsdbpg: Illegal value for datestyle: %s", style);
+            }
+#endif
+            if (style != NULL) {
                 Tcl_DString ds;
 
                 Tcl_DStringInit(&ds);
                 Ns_DStringPrintf(&ds, "set datestyle to '%s'", style);
                 dateStyle = Ns_DStringExport(&ds);
                 Ns_Log(Notice, "nsdbpg: Using datestyle: %s", style);
-            } else {
-                Ns_Log(Error, "nsdbpg: Illegal value for datestyle: %s", style);
             }
         } else {
             style = getenv("PGDATESTYLE");
@@ -302,7 +377,7 @@ OpenDb(Ns_DbHandle *handle)
 
         Ns_HttpParseHost2(ds.string, NS_TRUE, &host, &portStart, &end);
         if (portStart != NULL) {
-            db = strchr(portStart, INTCHAR(':'));
+            db = strchr(ds.string + (portStart - ds.string), INTCHAR(':'));
         }
 
         if (db == NULL) {
