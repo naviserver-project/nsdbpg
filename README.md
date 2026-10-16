@@ -195,3 +195,29 @@ PGPATH=postgresql17 make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/incl
 ```
 
 Refer to the Makefile for further details regarding the module build process.
+
+## PostgreSQL notices
+
+Database-side `RAISE NOTICE`, `RAISE WARNING` and other libpq notices go through
+NaviServer logging, with the pool name and the executing thread's timestamp and
+context. `DETAIL`, `HINT` and `CONTEXT` are continuation fields of the same log
+record. DEBUG maps to Debug; LOG, INFO and NOTICE to Notice; WARNING to Warning;
+ERROR to Error; FATAL and PANIC to Fatal. Normal NaviServer severity filtering
+applies. PostgreSQL `client_min_messages` still controls which messages reach
+the client. When available, nonlocalized PostgreSQL severity fields are used.
+The callback does not change SQL success or exception handling. It is installed
+on each connection before initialization SQL, including replacement connections.
+
+### Notice regression tests
+
+Build the driver, then run against a dedicated PostgreSQL test database (PL/pgSQL
+must be available). The tests create no persistent database objects:
+
+```sh
+NSDBPG_TEST_DATASOURCE=127.0.0.1:5432:testdb NSDBPG_TEST_USER=testuser \
+  /usr/local/ns/bin/nsd -c -d -t "$PWD/tests/notice.nscfg" "$PWD/tests/run-notice.tcl"
+```
+
+Optional environment variables: `NSDBPG_TEST_HOME` (NaviServer installation),
+`NSDBPG_TEST_PASSWORD` (database password). The test configuration loads the
+built `nsdbpg.so` from this repository. It requires no OpenACS installation.

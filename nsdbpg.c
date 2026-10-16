@@ -12,7 +12,7 @@
 /*
  * nsdbpg.c --
  *
- *      Implements the nsdb driver interface for the postgres database.
+ *      Implements the nsdb driver interface for the PostgreSQL database.
  */
 
 #include "dbpg.h"
@@ -106,6 +106,8 @@ static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 #if NS_VERSION_NUM >= 50000
 static Tcl_Obj*      VersionInfo(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 #endif
+
+static void NoticeReceiver(void *arg, const PGresult *result);
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
 
@@ -397,6 +399,8 @@ OpenDb(Ns_DbHandle *handle)
                 pgconn = PQsetdbLogin(host, portStart, NULL, NULL, db, handle->user,
                                       handle->password);
             }
+            /* Install before any initialization SQL; OpenDb also handles reconnects. */
+            PQsetNoticeReceiver(pgconn, NoticeReceiver, handle);
             if (PQstatus(pgconn) != CONNECTION_OK) {
                 Ns_Log(Error, "nsdbpg(%s): could not connect to %s: %s",
                        handle->poolname, handle->datasource, PQerrorMessage(pgconn));
@@ -421,6 +425,88 @@ OpenDb(Ns_DbHandle *handle)
         }
     }
     return status;
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * NoticeReceiver --
+ *
+ *      Route asynchronous PostgreSQL diagnostics (including RAISE NOTICE
+ *      and WARNING) through NaviServer logging instead of libpq's default
+ *      stderr receiver. Preserve DETAIL, HINT and CONTEXT in one record.
+ *      The handle remains valid for the lifetime of its PGconn, including
+ *      PQfinish(). Logging a notice does not set a database exception or
+ *      change the outcome of the SQL operation.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      Emits a log record at the corresponding NaviServer severity.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+NoticeReceiver(void *arg, const PGresult *result)
+{
+    const Ns_DbHandle *handle = arg;
+    const char        *level, *message;
+    Ns_LogSeverity     severity = Notice;
+    Tcl_DString        ds;
+    size_t             i;
+    static const struct {
+        int         code;
+        const char *label;
+    } fields[] = {
+        {PG_DIAG_MESSAGE_DETAIL, "DETAIL"},
+        {PG_DIAG_MESSAGE_HINT,   "HINT"},
+        {PG_DIAG_CONTEXT,        "CONTEXT"}
+    };
+
+#ifdef PG_DIAG_SEVERITY_NONLOCALIZED
+    level = PQresultErrorField(result, PG_DIAG_SEVERITY_NONLOCALIZED);
+    if (level == NULL) {
+        level = PQresultErrorField(result, PG_DIAG_SEVERITY);
+    }
+#else
+    level = PQresultErrorField(result, PG_DIAG_SEVERITY);
+#endif
+    if (level != NULL) {
+        if (STREQ(level, "WARNING")) {
+            severity = Warning;
+        } else if (STREQ(level, "ERROR")) {
+            severity = Error;
+        } else if (STREQ(level, "FATAL") || STREQ(level, "PANIC")) {
+            severity = Fatal;
+        } else if (strncmp(level, "DEBUG", 5u) == 0) {
+            severity = Debug;
+        }
+    }
+    if (!Ns_LogSeverityEnabled(severity)) {
+        return;
+    }
+
+    message = PQresultErrorField(result, PG_DIAG_MESSAGE_PRIMARY);
+    if (message == NULL) {
+        message = PQresultErrorMessage(result);
+    }
+    Tcl_DStringInit(&ds);
+    Tcl_DStringAppend(&ds, message != NULL ? message : "PostgreSQL diagnostic", TCL_INDEX_NONE);
+    for (i = 0u; i < sizeof(fields) / sizeof(fields[0]); i++) {
+        const char *value = PQresultErrorField(result, fields[i].code);
+
+        if (value != NULL && *value != '\0') {
+            Tcl_DStringAppend(&ds, "\n", 1);
+            Tcl_DStringAppend(&ds, fields[i].label, TCL_INDEX_NONE);
+            Tcl_DStringAppend(&ds, ": ", 2);
+            Tcl_DStringAppend(&ds, value, TCL_INDEX_NONE);
+        }
+    }
+    Ns_Log(severity, "nsdbpg(%s): %s", handle->poolname, ds.string);
+    Tcl_DStringFree(&ds);
 }
 
 
