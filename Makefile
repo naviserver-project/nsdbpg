@@ -39,3 +39,9 @@ MODLIBS    += -lnsdb -lpq
 
 include  $(NAVISERVER)/include/Makefile.module
 
+
+# Optional integration tests against a dedicated PostgreSQL database.
+NSD ?= $(NAVISERVER)/bin/nsd
+.PHONY: test-bind
+test-bind: all
+	$(NSD) -c -d -t $(CURDIR)/tests/bind.nscfg $(CURDIR)/tests/run-bind.tcl

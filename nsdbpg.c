@@ -107,6 +107,16 @@ static Ns_ReturnCode ResetHandle(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 static Tcl_Obj*      VersionInfo(Ns_DbHandle *handle) NS_GNUC_NONNULL(1);
 #endif
 
+#if defined(NS_DB_BIND_ABI) && defined(NS_DB_BIND_PARAMETER_ABI)
+static Ns_DbBindTypedExecProc BindExec NS_GNUC_NONNULL(1, 2, 3);
+static Tcl_Obj *BindParameter(TCL_SIZE_T position);
+#if NS_DB_BIND_ABI >= 2
+static Ns_DbBindTypesProc BindTypes NS_GNUC_NONNULL(1);
+static int BindArrayEncode(Tcl_Interp *interp, Tcl_Obj *obj, Tcl_DString *buffer)
+    NS_GNUC_NONNULL(1, 2, 3);
+#endif
+#endif
+
 static void NoticeReceiver(void *arg, const PGresult *result);
 
 static void SetTransactionState(const Ns_DbHandle *handle, const char *sql);
@@ -124,6 +134,13 @@ static const Ns_DbProc procs[] = {
     {DbFn_CloseDb,      (ns_funcptr_t)CloseDb},
     {DbFn_BindRow,      (ns_funcptr_t)BindRow},
     {DbFn_Exec,         (ns_funcptr_t)Exec},
+#if defined(NS_DB_BIND_ABI) && defined(NS_DB_BIND_PARAMETER_ABI)
+    {DbFn_BindTyped,    (ns_funcptr_t)BindExec},
+#if NS_DB_BIND_ABI >= 2
+    {DbFn_BindTypes,    (ns_funcptr_t)BindTypes},
+#endif
+    {DbFn_BindParameter,(ns_funcptr_t)BindParameter},
+#endif
     {DbFn_GetRow,       (ns_funcptr_t)GetRow},
     {DbFn_GetRowCount,  (ns_funcptr_t)GetRowCount},
     {DbFn_Flush,        (ns_funcptr_t)Flush},
@@ -798,6 +815,305 @@ Exec(Ns_DbHandle *handle, const char *sql)
 }
 
 
+#if defined(NS_DB_BIND_ABI) && defined(NS_DB_BIND_PARAMETER_ABI)
+#if NS_DB_BIND_ABI >= 2
+/*
+ *----------------------------------------------------------------------
+ *
+ * BindTypes --
+ *
+ *      Advertise native parameter interpretations supported by libpq.
+ *
+ * Results:
+ *      A bit mask indexed by Ns_DbBindValueType.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+static unsigned
+BindTypes(const Ns_DbHandle *UNUSED(handle))
+{
+    return (1u << NS_DB_BIND_TEXT) | (1u << NS_DB_BIND_BINARY) | (1u << NS_DB_BIND_ARRAY);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * BindArrayEncode --
+ *
+ *      Encode one-dimensional scalar elements using PostgreSQL array input
+ *      syntax. Quote every text element, escaping quotes and backslashes.
+ *      Only the core's NULL pointers become unquoted NULL tokens. SQL casts
+ *      or destination columns determine the PostgreSQL array element type.
+ *
+ * Results:
+ *      TCL_OK or TCL_ERROR for invalid prepared data or embedded text NUL.
+ *
+ * Side effects:
+ *      Append to the caller's parameter buffer; no SQL execution or retention
+ *      of borrowed Tcl values. Original input objects are not modified.
+ *
+ *----------------------------------------------------------------------
+ */
+static int
+BindArrayEncode(Tcl_Interp *interp, Tcl_Obj *obj, Tcl_DString *buffer)
+{
+    Tcl_Obj *const *values;
+    TCL_SIZE_T count;
+    char delimiter;
+    Tcl_Obj *previous = NULL;
+    Tcl_DString cached;
+
+    if (Ns_DbBindArrayGet(interp, obj, &count, &values, &delimiter) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    /*
+     * Cache only a consecutive run of identical element objects. Conversion
+     * and escaping remain identical to scalar text; no cache survives this
+     * call, and distinct objects do not incur a cache copy.
+     */
+    Tcl_DStringInit(&cached);
+    Tcl_DStringAppend(buffer, "{", 1);
+    for (TCL_SIZE_T i = 0; i < count; i++) {
+        if (i > 0) {
+            Tcl_DStringAppend(buffer, &delimiter, 1);
+        }
+        if (values[i] == NULL) {
+            Tcl_DStringAppend(buffer, "NULL", 4);
+            previous = NULL;
+        } else if (values[i] == previous) {
+            Tcl_DStringAppend(buffer, cached.string, cached.length);
+        } else {
+            TCL_SIZE_T elementStart = buffer->length;
+            TCL_SIZE_T length;
+            const char *text = Tcl_GetStringFromObj(values[i], &length);
+            Tcl_DString external;
+
+            /*
+             * As in ns_pg_bind, integer objects already have an ASCII numeric
+             * representation. Preserve that representation (including signs,
+             * radix prefixes and whitespace), without conversion or escaping.
+             * Do not parse string objects or change their internal types here.
+             */
+            if (values[i]->typePtr != NULL
+                && (STREQ(values[i]->typePtr->name, "int")
+                    || STREQ(values[i]->typePtr->name, "wideInt")
+                    || STREQ(values[i]->typePtr->name, "bignum"))) {
+                Tcl_DStringAppend(buffer, "\"", 1);
+                Tcl_DStringAppend(buffer, text, length);
+                Tcl_DStringAppend(buffer, "\"", 1);
+                previous = NULL;
+                continue;
+            }
+
+            /* Preserve scalar external-encoding and embedded-NUL semantics. */
+            Tcl_UtfToExternalDString(NULL, text, length, &external);
+            if (memchr(external.string, '\0', (size_t)external.length) != NULL) {
+                Tcl_DStringFree(&external);
+                Tcl_DStringFree(&cached);
+                Tcl_SetObjResult(interp, Tcl_NewStringObj("SQL array text element contains NUL", TCL_INDEX_NONE));
+                return TCL_ERROR;
+            }
+            Tcl_DStringAppend(buffer, "\"", 1);
+            {
+                const char *start = external.string, *end = start + external.length;
+                /* Keep both search positions to avoid rescanning suffixes. */
+                const char *quote = memchr(start, '"', (size_t)(end - start));
+                const char *slash = memchr(start, '\\', (size_t)(end - start));
+                while (quote != NULL || slash != NULL) {
+                    const char *escape = slash == NULL || (quote != NULL && quote < slash) ? quote : slash;
+                    Tcl_DStringAppend(buffer, start, (TCL_SIZE_T)(escape - start));
+                    Tcl_DStringAppend(buffer, "\\", 1);
+                    Tcl_DStringAppend(buffer, escape, 1);
+                    start = escape + 1;
+                    if (escape == quote) {
+                        quote = memchr(start, '"', (size_t)(end - start));
+                    } else {
+                        slash = memchr(start, '\\', (size_t)(end - start));
+                    }
+                }
+                Tcl_DStringAppend(buffer, start, (TCL_SIZE_T)(end - start));
+            }
+            Tcl_DStringAppend(buffer, "\"", 1);
+            Tcl_DStringFree(&external);
+            previous = NULL;
+            if (i + 1 < count && values[i+1] == values[i]) {
+                Tcl_DStringSetLength(&cached, 0);
+                Tcl_DStringAppend(&cached, buffer->string + elementStart, buffer->length - elementStart);
+                previous = values[i];
+            }
+        }
+    }
+    Tcl_DStringAppend(buffer, "}", 1);
+    Tcl_DStringFree(&cached);
+    return TCL_OK;
+}
+#endif
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * BindParameter --
+ *
+ *      Return libpq's positional marker for a core-generated parameter slot.
+ *      Applications continue using colon names; core caches the rewritten SQL.
+ *
+ * Results:
+ *      A new, unreferenced Tcl string object.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+static Tcl_Obj *
+BindParameter(TCL_SIZE_T position)
+{
+    return Tcl_ObjPrintf("$%" TCL_LL_MODIFIER "d", (Tcl_WideInt)position + 1);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * BindExec --
+ *
+ *      Send core-prepared SQL and parameter values separately through libpq.
+ *      Text uses the established Tcl external encoding. Explicit binary values
+ *      use PostgreSQL bytea's binary input format, including zero-length values.
+ *      Results retain the existing text-format row-fetching implementation.
+ *
+ * Results:
+ *      NS_ROWS, NS_DML or NS_ERROR. Conversion failures set the Tcl result;
+ *      server failures set the handle's database exception.
+ *
+ * Side effects:
+ *      Replaces the pending result only after parameter conversion succeeds.
+ *      Does not commit, roll back or retry a possibly submitted statement.
+ *      Parameter storage is copied before conversion of another Tcl object,
+ *      since callers can supply aliases with different type interpretations.
+ *
+ *----------------------------------------------------------------------
+ */
+static int
+BindExec(Tcl_Interp *interp, Ns_DbHandle *handle, const char *sql,
+              TCL_SIZE_T count, Tcl_Obj *const *UNUSED(names), Tcl_Obj *const *values,
+              const Ns_DbBindValueType *types)
+{
+    Connection    *pconn = handle->connection;
+    Tcl_DString   *storage;
+    const char   **parameters;
+    Oid           *oids;
+    int           *lengths, *formats;
+    TCL_SIZE_T     i;
+    int            result = NS_ERROR;
+
+    /* The extended-query protocol encodes parameter counts in 16 bits. */
+    if (count < 0 || count > 65535) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("PostgreSQL supports at most 65535 bind parameters", TCL_INDEX_NONE));
+        return NS_ERROR;
+    }
+    if (pconn == NULL || PQstatus(pconn->pgconn) != CONNECTION_OK) {
+        Ns_DbSetException(handle, "ERROR", "PostgreSQL connection is not available");
+        return NS_ERROR;
+    }
+    storage = ns_calloc((size_t)count + 1u, sizeof(Tcl_DString));
+    parameters = ns_calloc((size_t)count + 1u, sizeof(char *));
+    oids = ns_calloc((size_t)count + 1u, sizeof(Oid));
+    lengths = ns_calloc((size_t)count + 1u, sizeof(int));
+    formats = ns_calloc((size_t)count + 1u, sizeof(int));
+    for (i = 0; i < count; i++) {
+        Tcl_DStringInit(&storage[i]);
+    }
+    for (i = 0; i < count; i++) {
+        TCL_SIZE_T length;
+
+        if (types != NULL && types[i] == NS_DB_BIND_BINARY) {
+            oids[i] = 17u;       /* BYTEAOID, stable PostgreSQL catalog identifier. */
+            formats[i] = 1;
+        }
+        if (values[i] == NULL) {
+            continue;
+        }
+#if NS_DB_BIND_ABI >= 2
+        if (types != NULL && types[i] == NS_DB_BIND_ARRAY) {
+            if (BindArrayEncode(interp, values[i], &storage[i]) != TCL_OK) {
+                goto cleanup;
+            }
+            parameters[i] = storage[i].string;
+            continue;
+        }
+#endif
+        if (formats[i] == 1) {
+            const unsigned char *bytes = Tcl_GetByteArrayFromObj(values[i], &length);
+
+            if (length > INT_MAX) {
+                Tcl_SetObjResult(interp, Tcl_NewStringObj("binary bind value exceeds libpq's length limit", TCL_INDEX_NONE));
+                goto cleanup;
+            }
+            Tcl_DStringAppend(&storage[i], (const char *)bytes, length);
+            lengths[i] = (int)length;
+        } else {
+            const char *text = Tcl_GetStringFromObj(values[i], &length);
+
+            Tcl_UtfToExternalDString(NULL, text, length, &storage[i]);
+            if (memchr(storage[i].string, '\0', (size_t)storage[i].length) != NULL) {
+                Tcl_SetObjResult(interp, Tcl_NewStringObj("text bind value contains NUL; use binary binding for bytea", TCL_INDEX_NONE));
+                goto cleanup;
+            }
+        }
+        parameters[i] = storage[i].string;
+    }
+
+    PQclear(pconn->res);
+    pconn->res = NULL;
+    pconn->nCols = pconn->nTuples = pconn->curTuple = 0;
+    handle->fetchingRows = NS_FALSE;
+    pconn->res = PQexecParams(pconn->pgconn, sql, (int)count, oids, parameters,
+                              lengths, formats, 0);
+    if (pconn->res == NULL) {
+        Ns_DbSetException(handle, "ERROR", PQerrorMessage(pconn->pgconn));
+        goto cleanup;
+    }
+    if (PQresultStatus(pconn->res) == PGRES_TUPLES_OK) {
+        handle->fetchingRows = NS_TRUE;
+        result = NS_ROWS;
+    } else if (PQresultStatus(pconn->res) == PGRES_COMMAND_OK) {
+        SetTransactionState(handle, sql);
+        pconn->nTuples = (int)strtol(PQcmdTuples(pconn->res), NULL, 10);
+        result = NS_DML;
+    } else {
+        Ns_DbSetException(handle, "ERROR", PQresultErrorMessage(pconn->res));
+    }
+    /* PostgreSQL's state also covers comments, START TRANSACTION and SAVEPOINT. */
+    {
+        PGTransactionStatusType state = PQtransactionStatus(pconn->pgconn);
+        bool wasInTransaction = pconn->in_transaction;
+
+        if (state != PQTRANS_UNKNOWN) {
+            pconn->in_transaction = state == PQTRANS_INTRANS || state == PQTRANS_INERROR;
+            if (pconn->in_transaction && !wasInTransaction) {
+                Ns_GetTime(&pconn->transactionStartTime);
+            }
+        }
+    }
+
+ cleanup:
+    for (i = 0; i < count; i++) {
+        Tcl_DStringFree(&storage[i]);
+    }
+    ns_free(storage);
+    ns_free(parameters);
+    ns_free(oids);
+    ns_free(lengths);
+    ns_free(formats);
+    return result;
+}
+#endif
+
+
 /*
  *----------------------------------------------------------------------
  *

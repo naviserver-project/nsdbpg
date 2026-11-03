@@ -1,0 +1,211 @@
+# One-dimensional arrays are one parameter; NULL state is never a string sentinel.
+proc pgArrayElements {values {emptyNull false}} {
+    set options {-bindvars -bindtypes {values array}}
+    if {$emptyNull} {
+        lappend options -emptynull
+    }
+    set row [ns_db select $::bindHandle {*}$options {
+        SELECT v, v IS NULL AS n FROM unnest(:values::text[]) WITH ORDINALITY AS t(v,ord) ORDER BY ord
+    }]
+    set result {}
+    try {
+        while {[ns_db getrow $::bindHandle $row]} {
+            lappend result [list [ns_set get $row n] [ns_set get $row v]]
+        }
+    } finally {
+        ns_db flush $::bindHandle
+    }
+    return $result
+}
+
+test pg-array-capabilities {PostgreSQL explicitly advertises array support} -body {
+    ns_db bindinfo $bindHandle -types
+} -result {scalar binary array}
+
+test pg-array-integer {one native integer array supports ANY and repeated occurrences} -body {
+    set ids {1 3 5}
+    pgValue {SELECT count(*) AS n FROM generate_series(1,5) t(id) WHERE id=ANY(:ids::integer[]) OR id=ANY(:ids::integer[])} -bindvars -bindtypes {ids array}
+} -result {n 3}
+
+test pg-array-roundtrip {quotes, slashes, punctuation, whitespace and Unicode are scalar text elements} -body {
+    set values [list plain {a,b} {a"b} {a\b} {{nested}} { leading } "line\nbreak" café {'); DROP TABLE bind_items; --}]
+    set expected {}
+    foreach value $values {
+        lappend expected [list f $value]
+    }
+    expr {[pgArrayElements $values] eq $expected}
+} -result 1
+
+test pg-array-null {empty text and literal NULL remain distinct by default} -body {
+    pgArrayElements [list {} NULL null { }]
+} -result {{f {}} {f NULL} {f null} {f { }}}
+
+test pg-array-emptynull {emptynull affects only empty elements, without magic tokens} -body {
+    pgArrayElements [list {} NULL null { }] true
+} -result {{t {}} {f NULL} {f null} {f { }}}
+
+test pg-array-empty {an empty list remains an empty array even under emptynull} -body {
+    set ids {}
+    list [pgValue {SELECT cardinality(:ids::integer[]) AS n,:ids::integer[] IS NULL AS nul} -bindvars -bindtypes {ids array}] \
+        [pgValue {SELECT cardinality(:ids::integer[]) AS n,:ids::integer[] IS NULL AS nul} -bindvars -bindtypes {ids array} -emptynull]
+} -result {{n 0 nul f} {n 0 nul f}}
+
+test pg-array-sources {dict and ns_set bindings support array interpretation} -body {
+    set bindings [ns_set create values ids {2 4}]
+    try {
+        list [pgValue {SELECT cardinality(:ids::integer[]) AS n} -binddict {ids {1 2 3}} -bindtypes {ids array}] \
+            [pgValue {SELECT cardinality(:ids::integer[]) AS n} -bindset $bindings -bindtypes {ids array}]
+    } finally {
+        ns_set free $bindings
+    }
+} -result {{n 3} {n 2}}
+
+test pg-array-refresh {same cached SQL uses current values, lengths and NULL policy} -body {
+    set statement {SELECT cardinality(:ids::text[]) AS n,array_position(:ids::text[],NULL) IS NOT NULL AS hasnull}
+    set ids {a b}
+    set a [pgValue $statement -bindvars -bindtypes {ids array}]
+    set ids [list {} NULL tail]
+    set b [pgValue $statement -bindvars -bindtypes {ids array} -emptynull]
+    set c [pgValue $statement -bindvars -bindtypes {ids array}]
+    list $a $b $c
+} -result {{n 2 hasnull f} {n 3 hasnull t} {n 3 hasnull f}}
+
+test pg-array-not-multidimensional {nested Tcl lists are quoted scalar text, not SQL subarrays} -body {
+    set values [list [list 1 2] [list 3 4]]
+    pgValue {SELECT array_ndims(:values::text[]) AS dimensions,cardinality(:values::text[]) AS n} -bindvars -bindtypes {values array}
+} -result {dimensions 1 n 2}
+
+test pg-array-mixed {array, binary and scalar parameters retain their separate types} -body {
+    set ids {1 2}
+    set bytes [binary format H* 00ff]
+    set scalar value
+    pgValue {SELECT cardinality(:ids::integer[]) AS n,encode(:bytes,'hex') AS hex,:scalar::text AS s} \
+        -bindvars -bindtypes {ids array bytes binary}
+} -result {n 2 hex 00ff s value}
+
+test pg-array-rollback {invalid element input never commits caller writes} -body {
+    ns_db dml $bindHandle BEGIN
+    ns_db dml $bindHandle {INSERT INTO bind_items(id) VALUES(99)}
+    set ids {1 invalid}
+    set failed [catch {pgValue {SELECT :ids::integer[]} -bindvars -bindtypes {ids array}}]
+    ns_db dml $bindHandle ROLLBACK
+    list $failed [pgValue {SELECT count(*) AS n FROM bind_items WHERE id=99} -binddict {}]
+} -result {1 {n 0}}
+
+test pg-array-malformed {malformed Tcl lists and element NUL bytes are rejected} -body {
+    set ids \{
+    set a [catch {pgValue {SELECT :ids::text[]} -bindvars -bindtypes {ids array}}]
+    set ids [list "a\x00b"]
+    set b [catch {pgValue {SELECT :ids::text[]} -bindvars -bindtypes {ids array}} message]
+    list $a $b [string match {*NUL*} $message] [pgValue {SELECT 1 AS n} -binddict {}]
+} -result {1 1 1 {n 1}}
+
+test pg-array-original {preparation never changes the supplied list or its elements} -body {
+    set ids [list {} NULL {a"b} {a\b} café]
+    set original $ids
+    pgValue {SELECT cardinality(:ids::text[]) AS n} -bindvars -bindtypes {ids array} -emptynull
+    expr {$ids eq $original}
+} -result 1
+
+test pg-array-one-slot {large arrays are one parameter rather than exceeding the libpq parameter limit} -body {
+    set ids {}
+    for {set i 0} {$i<66000} {incr i} {
+        lappend ids $i
+    }
+    pgValue {SELECT cardinality(:ids::integer[]) AS n} -bindvars -bindtypes {ids array}
+} -result {n 66000}
+
+test pg-array-delimiter {explicit delimiter supports PostgreSQL box arrays without inspecting SQL types} -body {
+    set boxes [list {(1,1),(0,0)} {(3,3),(2,2)}]
+    pgValue {SELECT cardinality(:boxes::box[]) AS n} -bindvars -bindtypes {boxes {array ;}}
+} -result {n 2}
+
+
+
+
+test pg-array-reuse-escapes {consecutive identical objects retain all escape characters and lengths} -body {
+    set value "[string repeat x 65536]\"\\\"\\"
+    set values [lrepeat 8 $value]
+    set result [pgArrayElements $values]
+    expr {$result eq [lrepeat 8 [list f $value]]}
+} -result 1
+
+test pg-array-reuse-null-boundaries {NULL breaks reuse and literal NULL remains text} -body {
+    set value {a\"b\\c}
+    set values [list $value $value {} $value $value NULL NULL {} {}]
+    pgArrayElements $values true
+} -result {{f {a\"b\\c}} {f {a\"b\\c}} {t {}} {f {a\"b\\c}} {f {a\"b\\c}} {f NULL} {f NULL} {t {}} {t {}}}
+
+test pg-array-reuse-fresh {fresh parent lists and changed elements never reuse stale encoded data} -body {
+    set result {}
+    foreach value [list {old\"\\} {new\\\"} {} \u00e9\u20ac\U0001f642] {
+        set values [lrepeat 4 $value]
+        lappend result [expr {[pgArrayElements $values] eq [lrepeat 4 [list f $value]]}]
+    }
+    set result
+} -result {1 1 1 1}
+
+test pg-array-reuse-error {a NUL following a reused run is rejected and later calls still work} -body {
+    set value [string repeat z 1024]
+    set ids [list $value $value "bad\u0000value"]
+    set failed [catch {pgValue {SELECT :ids::text[]} -bindvars -bindtypes {ids array}} message]
+    set ids [list $value $value]
+    list $failed [string match {*contains NUL*} $message] \
+        [pgValue {SELECT cardinality(:ids::text[]) AS n} -bindvars -bindtypes {ids array}]
+} -result {1 1 {n 2}}
+
+test pg-array-escape-order {quote and slash search positions remain correct in every order} -body {
+    set values [list {} \" \\ {\"\\} {\\\"} {\\\\} {\"\"} {x\"y\\z\"} {x\\y\"z\\}]
+    set expected {}
+    foreach v $values {
+        lappend expected [list f $v]
+    }
+    expr {[pgArrayElements $values] eq $expected}
+} -result 1
+
+
+test pg-array-integer-objects {small, wide and bignum objects round trip without changing text} -body {
+    set values [list [expr {0}] [expr {-17}] [expr {2147483648}] \
+                    [expr {-9223372036854775808}] [expr {2**200}] [expr {-(2**200)}]]
+    set expected {}
+    foreach value $values {
+        lappend expected [list f $value]
+    }
+    expr {[pgArrayElements $values] eq $expected}
+} -result 1
+
+test pg-array-integer-original-text {integer dual representations retain whitespace, signs and radix notation} -body {
+    set values {}
+    set expected {}
+    foreach value [list {  +0012 } 0x10 -0x100000000 0x100000000000000000000000000000000000000000000000000] {
+        if {![string is entier -strict $value]} {
+            error "test value is not an integer"
+        }
+        lappend values $value
+        lappend expected [list f $value]
+    }
+    expr {[pgArrayElements $values] eq $expected}
+} -result 1
+
+test pg-array-integer-mixed {integer optimization leaves strings, Unicode, empty text and NULL policies intact} -body {
+    set n [expr {123}]
+    set values [list $n $n {123\"\\} café {} NULL [expr {2**100}]]
+    set expected {}
+    foreach value $values {
+        lappend expected [list f $value]
+    }
+    set plain [expr {[pgArrayElements $values] eq $expected}]
+    list $plain [lindex [pgArrayElements $values true] 4]
+} -result {1 {t {}}}
+
+test pg-array-integer-sql-types {integer objects work with integer, bigint and numeric array casts} -body {
+    set small [list [expr {-1}] [expr {42}]]
+    set wide [list [expr {2**40}] [expr {-(2**40)}]]
+    set big [list [expr {2**200}] [expr {-(2**200)}]]
+    pgValue {SELECT (:small::integer[])[2] AS small, \
+        (:wide::bigint[])[1]=1099511627776 AS wide, \
+        (:big::numeric[])[1]+(:big::numeric[])[2]=0 AS big} \
+        -bindvars -bindtypes {small array wide array big array}
+} -result {small 42 wide t big t}
+
+rename pgArrayElements {}

@@ -1,0 +1,48 @@
+# Run with a dedicated PostgreSQL test database, never production.
+set home /usr/local/ns
+if {[info exists ::env(NSDBPG_TEST_HOME)]} {
+    set home $::env(NSDBPG_TEST_HOME)
+}
+if {![info exists ::env(NSDBPG_TEST_DATASOURCE)]} {
+    error "set NSDBPG_TEST_DATASOURCE to host:port:database for a dedicated test database"
+}
+set root [file dirname [file dirname [file normalize [ns_info config]]]]
+ns_section ns/parameters {
+    ns_param home $home
+    ns_param systemlog /tmp/nsdbpg-bind-test-[pid].log
+    ns_param pidfile /tmp/nsdbpg-bind-test-[pid].pid
+    if {[info exists ::env(NSDBPG_TEST_TCLLIB)]} {
+        ns_param tcllibrary $::env(NSDBPG_TEST_TCLLIB)
+    }
+}
+ns_section ns/servers {
+    ns_param bind-test {PostgreSQL bind integration tests}
+}
+ns_section ns/server/bind-test/modules {
+    set module $home/bin/nsdb.so
+    if {[info exists ::env(NSDBPG_TEST_NSDB_MODULE)]} {
+        set module $::env(NSDBPG_TEST_NSDB_MODULE)
+    }
+    ns_param nsdb $module
+}
+ns_section ns/db/drivers {
+    ns_param postgres $root/nsdbpg.so
+}
+ns_section ns/db/pools {
+    ns_param bind-test {Dedicated PostgreSQL bind test database}
+}
+ns_section ns/db/pool/bind-test {
+    ns_param driver postgres
+    ns_param connections 1
+    ns_param datasource $::env(NSDBPG_TEST_DATASOURCE)
+    if {[info exists ::env(NSDBPG_TEST_USER)]} {
+        ns_param user $::env(NSDBPG_TEST_USER)
+    }
+    if {[info exists ::env(NSDBPG_TEST_PASSWORD)]} {
+        ns_param password $::env(NSDBPG_TEST_PASSWORD)
+    }
+    ns_param verbose false
+}
+ns_section ns/server/bind-test/db {
+    ns_param pools bind-test
+}
