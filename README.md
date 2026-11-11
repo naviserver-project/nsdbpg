@@ -161,7 +161,7 @@ The module requires the following from PostgreSQL:
 **Example Build Operations:**
 
 ```bash
-export PG=/usr/local/pg17
+export PG=/usr/local/pg118
 make PGLIB=$PG/lib PGINCLUDE=$PG/include
 
 make PGINCLUDE=/usr/include/postgresql
@@ -170,7 +170,7 @@ make PGINCLUDE=/usr/include/postgresql
 To build and install the module when PostgreSQL is located in a non-standard directory, use:
 
 ```bash
-export PG=/usr/local/pg17
+export PG=/usr/local/pg18
 make PGLIB=$PG/lib PGINCLUDE=$PG/include
 make PGLIB=$PG/lib PGINCLUDE=$PG/include install
 ```
@@ -182,17 +182,20 @@ make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/
 make PGLIB=... PGINCLUDE=... NAVISERVER=/opt/local/ns499/ install
 ```
 
-On systems using MacPorts, you might execute:
+On macOS systems using MacPorts, you might execute:
 
 ```bash
-PGPATH=postgresql17 make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
+PGPATH=postgresql18; make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/
 ```
 
 For additional code checking using cppcheck, consider:
 
 ```bash
-PGPATH=postgresql17 make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
+PGPATH=postgresql18; make PGLIB=/opt/local/lib/$PGPATH/ PGINCLUDE=/opt/local/include/$PGPATH/ cppcheck
 ```
+
+/opt/local/include/postgresql18/pg_config.h
+
 
 Refer to the Makefile for further details regarding the module build process.
 
