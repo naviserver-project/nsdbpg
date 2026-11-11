@@ -167,7 +167,7 @@ PgObjCmd(ClientData UNUSED(clientData), Tcl_Interp *interp, TCL_SIZE_T argc, Tcl
 {
     Ns_DbHandle      *handle;
     const Connection *pconn;
-    int               subcmd, result;
+    int               subcmd = 0, result = TCL_OK;
 
     static const char *const subcmds[] = {
         "blob_write", "blob_get", "blob_put", "blob_dml_file", "blob_select_file",

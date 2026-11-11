@@ -1362,7 +1362,7 @@ SetTransactionState(const Ns_DbHandle *handle, const char *sql)
 {
     Connection *pconn = handle->connection;
     bool        transactionFinished = NS_FALSE;
-    const char *reason;
+    const char *reason = "unknown";
 
     while (*sql == ' ') {
         sql++;
